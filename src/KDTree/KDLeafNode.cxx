@@ -515,10 +515,12 @@ namespace NBody
         }
     }
 
-    void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
+    void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target, Int_t *js_visit)
     {
         //if bucket already linked and particle already part of group, do nothing.
         if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
+
+	js_visit[1] ++;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
         int flag=Head[bucket_start];
@@ -534,6 +536,7 @@ namespace NBody
 #ifdef JS_NEWSKIP_ON
 	if(sqrt(js_dist) >= sqrt(js_rr) + sqrt(fdist2)){
 		flag=0;
+		js_visit[1] --;
 	}
 	else if(sqrt(js_dist) <= abs(sqrt(js_rr) - sqrt(fdist2)) && fdist2 > js_rr){
 #else
@@ -963,9 +966,9 @@ namespace NBody
     {
         SearchCriterionNoDist(rd,cmp,params,iGroup,bucket,Group,off,p0,dim);
     }
-    void LeafNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target)
+    void LeafNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target, Int_t *js_visit)
     {
-        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
     }
 
     void LeafNode::FOFSearchCriterionPeriodic(Double_t rd, FOFcompfunc cmp, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target)

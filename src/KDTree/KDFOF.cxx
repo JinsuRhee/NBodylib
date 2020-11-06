@@ -37,6 +37,14 @@ namespace NBody
         if (pLen==NULL)     {pLen=new Int_tree_t[numparts];ipl=true;}
         if (pTail==NULL)    {pTail=new Int_tree_t[numparts];ipt=true;}
 
+	//For performance test
+	Int_tree_t *pVisitSplit, *pVisitLeaf;
+	Int_t *js_visit;
+	pVisitSplit = new Int_tree_t[numparts];
+	pVisitLeaf = new Int_tree_t[numparts];
+	js_visit = new Int_t[2];
+	//
+	
         Int_t iGroup=0,iHead=0,iTail=0,id,iid;
         Int_t maxlen=0;
 
@@ -52,6 +60,7 @@ namespace NBody
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
 
         for (Int_t i=0;i<numparts;i++){
+	    Double_t js_time = (clock() /( (double)CLOCKS_PER_SEC));
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
             if(pGroup[id]!=0) continue;
@@ -62,6 +71,7 @@ namespace NBody
             //if reach the end of particle list, set iTail to zero and wrap around
             if(iTail==numparts) iTail=0;
             //continue search for this group until one has wrapped around such that iHead==iTail
+	    
             while(iHead!=iTail) {
                 //this is initially particle i with ID id;
                 iid=Fifo[iHead++];
@@ -73,9 +83,21 @@ namespace NBody
                 //adjusts the Fifo array, iTail and pLen.
                 //first set offset to zero when beginning node search
                 for (int j = 0; j < 3; j++) off[j] = 0.0;
-                if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
-                else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
+                if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, js_visit);
+                else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid, js_visit);
+
             }
+
+	    if(pLen[iGroup]>=minnum){
+		    pVisitSplit[iGroup] = js_visit[0];
+		    pVisitLeaf[iGroup] = js_visit[1];
+	    }
+
+            if (maxlen<pLen[iGroup]){maxlen=pLen[iGroup];}
+	    if (pLen[iGroup]>=100000) cout<<"%123123	"<<iGroup<<" / "<<pLen[iGroup]<<" / "<<pVisitSplit[iGroup]<<" / "<<pVisitLeaf[iGroup]<<" / Time[s] : "<<(clock() /( (double)CLOCKS_PER_SEC))<<endl;
+	    js_visit[0]=js_visit[1]=0;
+
+
             if(pLen[iGroup]<minnum){
                 Int_t ii=pHead[pGroupHead[iGroup]];
                 do {
@@ -83,8 +105,13 @@ namespace NBody
                 } while ((ii=pNext[ii])!=-1);
             pLen[iGroup--]=0;
             }
+
             if (maxlen<pLen[iGroup]){maxlen=pLen[iGroup];}
         }
+
+	delete[] pVisitSplit;
+	delete[] pVisitLeaf;
+	delete[] js_visit;
 
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
