@@ -872,6 +872,7 @@ namespace NBody
         js_dist = DistanceSqd(js_pos, js_center, numdim);
         js_rr = js_farthest;
 
+#ifdef JS_NODESKIP_S_ON
 	if (sqrt(js_dist) >= sqrt(js_rr) + sqrt(fdist2)){
 		//SKIP This Node
 		flag=0;
@@ -895,6 +896,7 @@ namespace NBody
                 }
 	}
 	else{
+#endif
 		flag = 0;
 
         	Double_t old_off = off[cut_dim];
@@ -921,10 +923,17 @@ namespace NBody
         	        off[cut_dim] = old_off;
         	    }
         	}
+#ifdef JS_NODECLOSE_ON
 		if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
-	}
+#endif
 
+#ifdef JS_NODESKIP_S_ON
+	}
+#endif
+
+#ifdef JS_NODECLOSE_ON
 	if (flag) BucketFlag[nid]=1;
+#endif
 
 	///
         //Double_t old_off = off[cut_dim];
@@ -969,6 +978,7 @@ namespace NBody
 	    if(numdim==6) js_dist += DistanceSqd(js_vel, js_velCen, 3)/params[2];
 	    js_rr = js_farthest;
 
+#ifdef JS_NODESKIP_S_ON
 	    if(sqrt(js_dist) >= sqrt(js_rr) + 1.0){
 		    flag=0;
 	    }
@@ -989,6 +999,7 @@ namespace NBody
 		    }
 	    }
 	    else{
+#endif
 		    flag = 0;
 
                     Double_t old_off = off[cut_dim];
@@ -1028,9 +1039,17 @@ namespace NBody
                         }
                     }
 
+#ifdef JS_NODECLOSE_ON
 		    if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
+#endif
+
+#ifdef JS_NODESKIP_S_ON
 	    }
+#endif
+
+#ifdef JSNODECLOSE_ON
 	    if (flag) BucketFlag[nid]=1;
+#endif
 
         //Double_t old_off = off[cut_dim];
         //Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;

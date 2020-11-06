@@ -14,6 +14,8 @@
 
 #include <vector>
 
+#include "/home/jinsu/dev/VELOCIraptor-STF/src/js_perform.h"
+
 #ifdef USEOPENMP
 #include <omp.h>
 #endif
