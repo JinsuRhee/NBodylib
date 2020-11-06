@@ -873,11 +873,20 @@ namespace NBody
         js_rr = js_farthest;
 
 #ifdef JS_NODESKIP_S_ON
+#ifdef JS_NEWSKIP_ON
 	if (sqrt(js_dist) >= sqrt(js_rr) + sqrt(fdist2)){
 		//SKIP This Node
 		flag=0;
 	}
 	else if (sqrt(js_dist) <= abs(sqrt(js_rr) - sqrt(fdist2)) && fdist2 > js_rr){
+#else
+        Double_t maxr0=0.,maxr1=0.;
+        for (int j=0;j<numdim;j++){
+            maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
+            maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]);
+        }
+        if (maxr0<fdist2&&maxr1<fdist2){
+#endif
 		//This node is entirely enclosed
                 Int_t id;
 
@@ -979,10 +988,26 @@ namespace NBody
 	    js_rr = js_farthest;
 
 #ifdef JS_NODESKIP_S_ON
+#ifdef JS_NEWSKIP_ON
 	    if(sqrt(js_dist) >= sqrt(js_rr) + 1.0){
 		    flag=0;
 	    }
 	    else if(sqrt(js_dist) <= abs(sqrt(js_rr) - 1.0) && 1.0 > js_rr){
+#else
+	    Double_t maxr0=0.,maxr1=0.;
+	    for (int j=0;j<numdim;j++){
+		    if(j<3){
+			    maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]) / params[1];
+			    maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]) / params[1];
+		    }
+		    else
+		    {
+			    maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]) / params[2];
+			    maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]) / params[2];
+		    }
+	    }
+	    if (maxr0<1.0&&maxr1<1.0){
+#endif
 		    for(Int_t i=bucket_start; i < bucket_end; i++){
 			    Int_t id = bucket[i].GetID();
 			    //if(Group[id]==iGroup) continue;       // Skip already linked

@@ -530,10 +530,20 @@ namespace NBody
 	js_dist = DistanceSqd(js_pos, js_center, numdim);
 	js_rr = js_farthest;
 
+#ifdef JS_NODESKIP_L_ON
+#ifdef JS_NEWSKIP_ON
 	if(sqrt(js_dist) >= sqrt(js_rr) + sqrt(fdist2)){
 		flag=0;
 	}
 	else if(sqrt(js_dist) <= abs(sqrt(js_rr) - sqrt(fdist2)) && fdist2 > js_rr){
+#else
+        Double_t maxr0=0.,maxr1=0.;
+        for (int j=0;j<numdim;j++){
+            maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
+            maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]);
+        }
+        if (maxr0<fdist2&&maxr1<fdist2){
+#endif
 		//The the entire node lies within search distance
 		Int_t id;
 		for (Int_t i = bucket_start; i < bucket_end; i++){
@@ -551,6 +561,7 @@ namespace NBody
 		}
 	}
 	else{
+#endif
                 Int_t id;
                 Double_t dist2;
                 for (Int_t i = bucket_start; i < bucket_end; i++)
@@ -573,7 +584,9 @@ namespace NBody
                         flag=0;
                     }
                 }
+#ifdef JS_NODESKIP_L_ON
 	}
+#endif
 		//Otherwise check each particle individually
 
         //Double_t maxr0=0.,maxr1=0.;
@@ -643,10 +656,26 @@ namespace NBody
 	if(numdim==6) js_dist += DistanceSqd(js_vel, js_velCen, 3)/params[2];
 	js_rr = js_farthest;
 
+#ifdef JS_NODESKIP_S_ON
+#ifdef JS_NEWSKIP_ON
 	if(sqrt(js_dist) >= sqrt(js_rr) + 1.0){
 		flag=0;
 	}
 	else if(sqrt(js_dist) <= abs(sqrt(js_rr) - 1.0) && 1.0 > js_rr){
+#else
+        Double_t maxr0=0.,maxr1=0.;
+        for (int j=0;j<numdim;j++){
+		if(j<3){
+			maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]) / params[1];
+			maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]) / params[1];
+		}
+		else{
+			maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]) / params[2];
+			maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]) / params[2];
+		}
+        }
+        if (maxr0<1.0&&maxr1<1.0){
+#endif
 		for(Int_t i=bucket_start; i < bucket_end; i++){
 			Int_t id = bucket[i].GetID();
 			//if(Group[id]==iGroup) continue;
@@ -663,6 +692,7 @@ namespace NBody
 		}
 	}
 	else{
+#endif
         	for (Int_t i = bucket_start; i < bucket_end; i++)
         	{
         	    if (flag!=Head[i])flag=0;
@@ -684,7 +714,9 @@ namespace NBody
         	        flag=0;
         	    }
         	}
+#ifdef JS_NODESKIP_S_ON
 	}
+#endif
 	
         //for (Int_t i = bucket_start; i < bucket_end; i++)
         //{
