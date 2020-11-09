@@ -5,6 +5,7 @@
 */
 
 #include <KDTree.h>
+#include <sys/time.h>
 
 namespace NBody
 {
@@ -59,8 +60,10 @@ namespace NBody
         }
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
 
+	struct timeval js_start, js_end;
         for (Int_t i=0;i<numparts;i++){
-	    Double_t js_time = (clock() /( (double)CLOCKS_PER_SEC));
+	    gettimeofday(&js_start, NULL);
+
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
             if(pGroup[id]!=0) continue;
@@ -94,7 +97,12 @@ namespace NBody
 	    }
 
             if (maxlen<pLen[iGroup]){maxlen=pLen[iGroup];}
-	    if (pLen[iGroup]>=100000) cout<<"%123123	"<<iGroup<<" / "<<pLen[iGroup]<<" / "<<pVisitSplit[iGroup]<<" / "<<pVisitLeaf[iGroup]<<" / Time[s] : "<<(clock() /( (double)CLOCKS_PER_SEC))<<endl;
+	    if (pLen[iGroup]>=100000) {
+		    gettimeofday(&js_end, NULL);
+		    double js_tinv = ((js_end.tv_sec  - js_start.tv_sec) * 1000000u +
+				    js_end.tv_usec - js_start.tv_usec) / 1.e6;
+		    cout<<"%123123	"<<iGroup<<" / "<<pLen[iGroup]<<" / "<<pVisitSplit[iGroup]<<" / "<<pVisitLeaf[iGroup]<<" / Time[s] : "<<js_tinv<<endl;
+	    }
 	    js_visit[0]=js_visit[1]=0;
 
 
