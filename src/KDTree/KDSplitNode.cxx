@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <KDNode.h>
+#include <sys/time.h>
 
 namespace NBody
 {
@@ -862,37 +863,37 @@ namespace NBody
         }
     }
 
-    void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target, Int_t *js_visit)
+    void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target, long long *js_visit, double *js_time, long *js_numnodes)
     {
 	if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
 	int flag=Head[bucket_start];
 
 	js_visit[0] ++;
+	js_numnodes[nid] = 10;
 
+	//if(nActive == 4166225 && numdim ==6 && js_visit[0] % 1000000 == 0) cout<<"		"<<Len[iGroup]<<" / "<<js_visit[0]<<" / "<<nid<<" / "<<target<<endl;
+	//if(nActive == 4166225 && numdim ==6 && js_visit[0] >= 1000000 && js_visit[0] <= 2000000 && js_visit[0] % 100000 == 0) cout<<"		"<<Len[iGroup]<<" / "<<js_visit[0]<<" / "<<nid<<" / "<<target<<endl;
+
+	struct timeval js_start, js_end;
+#ifdef JS_LEAFTIME_ON
+	double js_tinv0, js_tinv1;
+#endif
+
+#ifdef JS_NODESKIP_ON
         Double_t js_pos[6], js_dist, js_rr;
         for(int js_j=0; js_j<numdim; js_j++) js_pos[js_j] = bucket[target].GetPhase(js_j);
         js_dist = DistanceSqd(js_pos, js_center, numdim);
         js_rr = js_farthest;
 
-#ifdef JS_NODESKIP_S_ON
-#ifdef JS_NEWSKIP_ON
 	if (sqrt(js_dist) >= sqrt(js_rr) + sqrt(fdist2)){
 		//SKIP This Node
 		flag=0;
-		js_visit[0] --;
+		js_visit[2] ++;
 	}
 	else if (sqrt(js_dist) <= abs(sqrt(js_rr) - sqrt(fdist2)) && fdist2 > js_rr){
-#else
-        Double_t maxr0=0.,maxr1=0.;
-        for (int j=0;j<numdim;j++){
-            maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
-            maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]);
-        }
-        if (maxr0<fdist2&&maxr1<fdist2){
-#endif
 		//This node is entirely enclosed
                 Int_t id;
-
+		js_visit[4] ++;
                 for (Int_t i = bucket_start; i < bucket_end; i++){
                         id=bucket[i].GetID();
                         if (Group[id]) continue;
@@ -913,67 +914,110 @@ namespace NBody
 
         	Double_t old_off = off[cut_dim];
         	Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+
         	if (new_off < 0)
         	{
-        	    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit);
+#ifdef JS_LEAFTIME_ON 
+		    //if(left->GetLeaf() > 0) js_tinv0 = omp_get_wtime();
+		    if(left->GetLeaf() > 0) gettimeofday(&js_start, NULL);
+
+#endif
+
+        	    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit, js_time, js_numnodes);
+
+#ifdef JS_LEAFTIME_ON
+		            if(left->GetLeaf() > 0){
+				//js_tinv1 = omp_get_wtime();
+				//js_time[0] += js_tinv1 - js_tinv0;
+				gettimeofday(&js_end, NULL);
+				js_time[0] += (js_end.tv_sec - js_start.tv_sec) +
+					(js_end.tv_usec - js_start.tv_usec) / 1.e6;
+		            }
+#endif
+
         	    rd += -old_off*old_off + new_off*new_off;
+
         	    if (rd < fdist2)
         	    {
         	        off[cut_dim] = new_off;
-        	        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit);
+
+#ifdef JS_LEAFTIME_ON
+			//if(right->GetLeaf() > 0) js_tinv0 = omp_get_wtime();
+			if(right->GetLeaf() > 0) gettimeofday(&js_start, NULL);
+#endif
+
+        	        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit, js_time, js_numnodes);
+
+#ifdef JS_LEAFTIME_ON
+				if(right->GetLeaf() > 0){
+					//js_tinv1 = omp_get_wtime();
+					//js_time[0] += js_tinv1 - js_tinv0;
+					gettimeofday(&js_end, NULL);
+					js_time[0] += (js_end.tv_sec - js_start.tv_sec) +
+						(js_end.tv_usec - js_start.tv_usec) / 1.e6;
+				}
+#endif
+
         	        off[cut_dim] = old_off;
         	    }
+
         	}
         	else
         	{
-        	    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit);
+#ifdef JS_LEAFTIME_ON
+		    //if(right->GetLeaf() > 0) js_tinv0 = omp_get_wtime();
+		    if(right->GetLeaf() > 0) gettimeofday(&js_start, NULL);
+#endif
+		    
+        	    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit, js_time, js_numnodes);
+
+#ifdef JS_LEAFTIME_ON
+		            if(right->GetLeaf() > 0){
+					//js_tinv1 = omp_get_wtime();
+					//js_time[0] += js_tinv1 - js_tinv0;
+					gettimeofday(&js_end, NULL);
+					js_time[0] += (js_end.tv_sec - js_start.tv_sec) +
+						(js_end.tv_usec - js_start.tv_usec) / 1.e6;
+		            }
+#endif
+
         	    rd += -old_off*old_off + new_off*new_off;
+
         	    if (rd < fdist2)
         	    {
         	        off[cut_dim] = new_off;
-        	        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit);
+
+#ifdef JS_LEAFTIME_ON
+			//if(left->GetLeaf() > 0) js_tinv0 = omp_get_wtime();
+			if(left->GetLeaf() > 0) gettimeofday(&js_start, NULL);
+#endif
+
+        	        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target, js_visit, js_time, js_numnodes);
+
+#ifdef JS_LEAFTIME_ON
+				if(left->GetLeaf() > 0){
+					//js_tinv1 = omp_get_wtime();
+					//js_time[0] += js_tinv1 - js_tinv0;
+					gettimeofday(&js_end, NULL);
+					js_time[0] += (js_end.tv_sec - js_start.tv_sec) +
+						(js_end.tv_usec - js_start.tv_usec) / 1.e6;
+				}
+#endif
+
         	        off[cut_dim] = old_off;
         	    }
         	}
 #ifdef JS_NODECLOSE_ON
-		if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
+		if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) {BucketFlag[nid]=1; js_numnodes[nid]=11;}
 #endif
 
-#ifdef JS_NODESKIP_S_ON
+#ifdef JS_NODESKIP_ON
 	}
 #endif
 
 #ifdef JS_NODECLOSE_ON
 	if (flag) BucketFlag[nid]=1;
 #endif
-
-	///
-        //Double_t old_off = off[cut_dim];
-        //Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
-        //if (new_off < 0)
-        //{
-        //    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-        //    rd += -old_off*old_off + new_off*new_off;
-        //    if (rd < fdist2)
-        //    {
-        //        off[cut_dim] = new_off;
-        //        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-        //        off[cut_dim] = old_off;
-        //    }
-        //}
-        //else
-        //{
-        //    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-        //    rd += -old_off*old_off + new_off*new_off;
-        //    if (rd < fdist2)
-        //    {
-        //        off[cut_dim] = new_off;
-        //        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-        //        off[cut_dim] = old_off;
-        //    }
-        //}
-
-	//if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
     }
 
     //key here is params which tell one how to search the tree
@@ -1697,10 +1741,10 @@ namespace NBody
         }
     }
     //here code is effectively like that of FOFsearchBallPeriodic but adjust the particle's position in the left/right search
-    void SplitNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Double_t *p, Int_t target, Int_t *js_visit)
+    void SplitNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Double_t *p, Int_t target, long long *js_visit, double *js_time, long *js_numnodes)
     {
         //first search normal particle
-        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
         Coordinate x0(bucket[target].GetPosition()),xp;
         Double_t sval;
         for (int k=0;k<NSPACEDIM;k++) {
@@ -1708,7 +1752,7 @@ namespace NBody
             sval=PeriodicReflection1D(x0,xp,p,k);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
             }
         }
         if (NSPACEDIM==3) {
@@ -1716,19 +1760,22 @@ namespace NBody
             sval=PeriodicReflection2D(x0,xp,p,0,1);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
             }
             for (int j = 0; j < NSPACEDIM; j++) off[j] = 0.0;
+
             sval=PeriodicReflection2D(x0,xp,p,0,2);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
             }
             for (int j = 0; j < NSPACEDIM; j++) off[j] = 0.0;
+
             sval=PeriodicReflection2D(x0,xp,p,1,2);
+
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
             }
         }
         // search all axis if current max dist less than search radius
@@ -1737,7 +1784,7 @@ namespace NBody
             sval=PeriodicReflectionND(x0,xp,p,NSPACEDIM);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, js_visit, js_time, js_numnodes);
             }
         }
         for (int j=0;j<3;j++) bucket[target].SetPosition(j,x0[j]);

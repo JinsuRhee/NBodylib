@@ -39,11 +39,16 @@ namespace NBody
         if (pTail==NULL)    {pTail=new Int_tree_t[numparts];ipt=true;}
 
 	//For performance test
-	Int_tree_t *pVisitSplit, *pVisitLeaf;
-	Int_t *js_visit;
-	pVisitSplit = new Int_tree_t[numparts];
-	pVisitLeaf = new Int_tree_t[numparts];
-	js_visit = new Int_t[2];
+	long long *js_visit;
+	double *js_time;
+	long *js_numnodes;
+	long js_nvisit=6, js_ntime=4;
+	js_visit = new long long[js_nvisit];
+	js_time = new double[js_ntime];
+	js_numnodes = new long[numnodes];
+	for(Int_t i=0; i<numnodes; i++) js_numnodes[i] = -1;
+	for(Int_t i=0; i<js_nvisit; i++) js_visit[i] = 0;
+	for(Int_t i=0; i<js_ntime; i++) js_time[i] = 0.0;
 	//
 	
         Int_t iGroup=0,iHead=0,iTail=0,id,iid;
@@ -60,9 +65,11 @@ namespace NBody
         }
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
 
-	struct timeval js_start, js_end;
+	double js_start, js_end;
         for (Int_t i=0;i<numparts;i++){
-	    gettimeofday(&js_start, NULL);
+	    for(Int_t js_i=0; js_i<js_nvisit; js_i++) js_visit[js_i] = 0;
+	    for(Int_t js_i=0; js_i<js_ntime; js_i++) js_time[js_i] = 0.0;
+	    js_start = omp_get_wtime();
 
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
@@ -85,26 +92,48 @@ namespace NBody
                 //within a distance fdist2, marks all particles using their IDS and pGroup array
                 //adjusts the Fifo array, iTail and pLen.
                 //first set offset to zero when beginning node search
+
                 for (int j = 0; j < 3; j++) off[j] = 0.0;
-                if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, js_visit);
-                else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid, js_visit);
+                //if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, js_visit, js_time, js_numnodes);
+                //else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid, js_visit, js_time, js_numnodes);
+                root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, js_visit, js_time, js_numnodes);
 
             }
 
-	    if(pLen[iGroup]>=minnum){
-		    pVisitSplit[iGroup] = js_visit[0];
-		    pVisitLeaf[iGroup] = js_visit[1];
-	    }
 
             if (maxlen<pLen[iGroup]){maxlen=pLen[iGroup];}
 	    if (pLen[iGroup]>=100000) {
-		    gettimeofday(&js_end, NULL);
-		    double js_tinv = ((js_end.tv_sec  - js_start.tv_sec) * 1000000u +
-				    js_end.tv_usec - js_start.tv_usec) / 1.e6;
-		    cout<<"%123123	"<<iGroup<<" / "<<pLen[iGroup]<<" / "<<pVisitSplit[iGroup]<<" / "<<pVisitLeaf[iGroup]<<" / Time[s] : "<<js_tinv<<endl;
-	    }
-	    js_visit[0]=js_visit[1]=0;
+		    js_end = omp_get_wtime();
+		    double js_tinv = js_end - js_start; 
 
+		    long js_nleaf=0, js_nsplit=0;
+		    long js_lc=0, js_sc=0;
+		    for(Int_t js_i=0; js_i<numnodes; js_i++){
+		           if(js_numnodes[js_i] > 5 && js_numnodes[js_i] <15) {
+				   if(js_numnodes[js_i] == 11) js_sc ++;
+				   js_nsplit ++; js_numnodes[js_i] = -1;
+			   }
+		           if(js_numnodes[js_i] > 15) {
+				   if(js_numnodes[js_i] == 21) js_lc ++;
+				   js_nleaf ++; js_numnodes[js_i] = -1;
+			   }
+		    }
+
+		    cout<<"%123123	";
+		    cout<<" / Num in Domain : "<<numparts;
+		    cout<<" / Dimension : "<<ND;
+		    cout<<" / Num in Group : "<<pLen[iGroup];
+		    cout<<" / Num Snode : "<<js_nsplit<<" / Num Lnode : "<<js_nleaf;
+		    cout<<" / Visit [S] : "<<js_visit[0]<<" / Visit [L] : "<<js_visit[1];
+		    cout<<" / Skipped [S] : "<<js_visit[2]<< " / Skipped [L] : "<<js_visit[3];
+		    cout<<" / Enclosed [S] : "<<js_visit[4]<<" / Enclosed [L] : "<<js_visit[5];
+		    cout<<" / Closed [S] : "<<js_sc<<" / Closed [L] : "<<js_lc;
+		    cout<<" / Time in Split : "<<js_tinv-js_time[0]<<" / Time in Leaf : "<<js_time[0];
+		    cout<<" / Total Time : "<<js_tinv<<endl;
+		    //if(pLen[iGroup]==297962) exit(9);
+	    }
+	    //for(Int_t js_i=0; js_i<js_nvisit; js_i++) js_visit[js_i] = 0;
+	    //for(Int_t js_i=0; js_i<js_ntime; js_i++) js_time[js_i] = 0.0;
 
             if(pLen[iGroup]<minnum){
                 Int_t ii=pHead[pGroupHead[iGroup]];
@@ -117,9 +146,9 @@ namespace NBody
             if (maxlen<pLen[iGroup]){maxlen=pLen[iGroup];}
         }
 
-	delete[] pVisitSplit;
-	delete[] pVisitLeaf;
 	delete[] js_visit;
+	delete[] js_time;
+	delete[] js_numnodes;
 
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
