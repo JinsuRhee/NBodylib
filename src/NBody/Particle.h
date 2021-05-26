@@ -308,7 +308,7 @@ typedef Int_t PARTPIDTYPE;
         DoublePos_t tage;
         unique_ptr<StarProperties> star;
 #endif
-#if defined (GASON) && (STARON)
+#if defined (GASON) && defined(STARON)
         ///metallicity
         DoublePos_t zmet;
         ///star formation rate of gas
@@ -538,7 +538,7 @@ typedef Int_t PARTPIDTYPE;
         Double_t GetTage() const {return tage;}
         void SetTage(const Double_t &Tage){tage=Tage;}
 #endif
-#if defined (GASON) && (STARON)
+#if defined (GASON) && defined(STARON)
         Double_t GetZmet() const {return zmet;}
         void SetZmet(const Double_t &Zmet){zmet=Zmet;}
         Double_t GetSFR() const {return sfr;}
