@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <sstream>
+#include <stdexcept>
 #include <Precision.h>
 #include <Coordinate.h>
 #include <Matrix.h>
@@ -138,6 +140,15 @@ class GMatrix
         //else {printf("Error, (i,j)=(%d, %d) exceed matrix dimesions of %d %d \n", i,j,row,col); return 0;}
     }
 
+    std::runtime_error incompatible_dimensions_error(const GMatrix &m)
+    {
+        std::ostringstream os;
+        os << "Error, incompatible dimensions: "
+           << "(" << row << "," << col << ") + "
+           << "(" << m.row << "," << m.col << ")";
+        return std::runtime_error(os.str());
+    }
+
     /// Matrix addition
     GMatrix operator + (const GMatrix& m)
     {
@@ -148,10 +159,7 @@ class GMatrix
                     data[i*col+j] = matrix[i*col+j]+m.matrix[i*col+j];
             return GMatrix(row,col,data);
         }
-        else {
-            printf("Error, incompatible dimensions (%d,%d) + (%d,%d)\n",row,col,m.row,m.col);
-            GMatrix(0,0);
-        }
+        throw incompatible_dimensions_error(m);
     }
 
     /// Matrix subtraction
@@ -164,10 +172,7 @@ class GMatrix
                     data[i*col+j] = matrix[i*col+j]-m.matrix[i*col+j];
             return GMatrix(row,col,data);
         }
-        else {
-            printf("Error, incompatible dimensions (%d,%d) + (%d,%d)\n",row,col,m.row,m.col);
-            GMatrix(0,0);
-        }
+        throw incompatible_dimensions_error(m);
     }
 
     /// Multiply by a scalar: a * M
