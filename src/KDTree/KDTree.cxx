@@ -1131,7 +1131,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         ibuildinparallel = false;
 #ifdef USEOPENMP
         ibuildinparallel = iBuildInParallel;
-        bool inested = omp_get_nested();
+        bool inested = omp_get_max_active_levels();
         int nthreads;
         #pragma omp parallel
         #pragma omp single
@@ -1139,7 +1139,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             nthreads = omp_get_num_threads();
         }
         if (nthreads == 1) ibuildinparallel = false;
-        if (inested == false) omp_set_nested(int(ibuildinparallel));
+        if (inested == false && ibuildinparallel) omp_set_max_active_levels(nthreads/2);
 #endif
         numparts = nparts;
         numleafnodes=numnodes=0;
@@ -1170,12 +1170,12 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             for (int j=0;j<ND;j++) {xvar[j]=1.0;ixvar[j]=1.0;}
             if (scalespace) ScaleSpace();
             for (int j=0;j<ND;j++) {vol*=xvar[j];ivol*=ixvar[j];}
-            if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
+            //if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes(0,numparts, otp);
             if (ibuildinparallel) BuildNodeIDs();
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
-            if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
+            //if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
 #ifdef USEOPENMP
         omp_set_nested(inested);
@@ -1198,7 +1198,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         ibuildinparallel = false;
 #ifdef USEOPENMP
         ibuildinparallel = iBuildInParallel;
-        bool inested = omp_get_nested();
+        bool inested = omp_get_max_active_levels();
         int nthreads;
         #pragma omp parallel
         #pragma omp single
@@ -1206,7 +1206,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             nthreads = omp_get_num_threads();
         }
         if (nthreads == 1) ibuildinparallel = false;
-        if (inested == false) omp_set_nested(int(ibuildinparallel));
+        if (inested == false && ibuildinparallel) omp_set_max_active_levels(nthreads/2);
 #endif
         numparts = s.GetNumParts();
         numleafnodes=numnodes=0;
@@ -1236,11 +1236,11 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             for (int j=0;j<ND;j++) {xvar[j]=1.0;ixvar[j]=1.0;}
             if (scalespace) ScaleSpace();
             for (int j=0;j<ND;j++) {vol*=xvar[j];ivol*=ixvar[j];}
-            if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
+            //if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes(0,numparts, otp);
             if (ibuildinparallel) BuildNodeIDs();
-            if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
+            //if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
 #ifdef USEOPENMP
         omp_set_nested(inested);
