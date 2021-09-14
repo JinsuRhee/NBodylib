@@ -47,6 +47,9 @@ namespace NBody
         //flags for memory management
         bool iph,ipt,ipn,ipl;
 
+	//Count Node Visits
+	Int_t *pNodeVisit = new Int_t[numnodes];
+
         //arrays used in determining group id.
         //pHead contains the index of the particle at head of the particles group
         //pTail contains tail of the particles group and Next the next in the list
@@ -95,8 +98,8 @@ namespace NBody
                 //adjusts the Fifo array, iTail and pLen.
                 //first set offset to zero when beginning node search
                 for (int j = 0; j < 6; j++) off[j] = 0.0;
-                if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
-                else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
+                if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, pNodeVisit);
+                else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid, pNodeVisit);
 
 		//SPLAY
 		//new ver
@@ -167,9 +170,19 @@ namespace NBody
 
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
+	double js_mean = 0.;
+	Int_t js_max = 0, js_min = 0;
+	for(Int_t i=0;i<numnodes;i++){
+		if(i==0||pNodeVisit[i]>=js_max) js_max = pNodeVisit[i];
+		if(i==0||pNodeVisit[i]<=js_min) js_min = pNodeVisit[i];
+		js_mean += pNodeVisit[i];
+	}
+	js_mean /= numparts;
+	cout<<"%123123	"<<numparts<<" / MEAN : "<<js_mean<<" / MAX : "<<js_max<<" / MIN : "<<js_min<<endl;
         //free memory for arrays that are not needed
         delete[] Fifo;
         delete[] pBucketFlag;
+	delete[] pNodeVisit;
         if (iph) delete[] pHead;
         if (ipt) delete[] pTail;
         if (ipn) delete[] pNext;
