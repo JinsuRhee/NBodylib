@@ -768,7 +768,50 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		            js_dx2 = abs(bucket[js_ind+1].GetPhase(splitdim) - bucket[js_ind].GetPhase(splitdim));
 		            if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(splitdim);}
 		    }
-		    
+		    //for(int js_dim=0; js_dim<ND; js_dim++){
+		    //    js_qsort(js_ind0, js_ind1, js_dim);
+		    //    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
+		    //    	js_dx2 = abs(bucket[js_ind+1].GetPhase(js_dim) - bucket[js_ind].GetPhase(js_dim));
+		    //    
+		    //    	if(js_dx2 > js_dx){
+		    //    		js_dx = js_dx2;
+		    //    		k=js_ind;
+		    //    		splitdim=js_dim;
+		    //    		splitvalue=bucket[k].GetPhase(splitdim);
+		    //    	}
+		    //    }
+		    //}
+		    //js_qsort(js_ind0, js_ind1, splitdim);
+
+
+		    double tot_x=0., tot_y=0.;
+		    double tot_x2=0., tot_y2=0.;
+		    for(int js_dim=0; js_dim<ND; js_dim++){
+		      js_qsort(js_ind0, js_ind1, js_dim);
+		      for(int js_ind=start; js_ind<end; js_ind++){
+		          if(js_ind<start+js_nn){
+		          	tot_x += bucket[js_ind].GetPhase(js_dim);
+		          	tot_x2 += bucket[js_ind].GetPhase(js_dim) * bucket[js_ind].GetPhase(js_dim);
+		          }
+		          else{
+		          	tot_y += bucket[js_ind].GetPhase(js_dim);
+		          	tot_y2 += bucket[js_ind].GetPhase(js_dim) * bucket[js_ind].GetPhase(js_dim);
+		          }
+		      }
+
+		      for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
+		          tot_x += bucket[js_ind].GetPhase(js_dim);
+		          tot_x2 += bucket[js_ind].GetPhase(js_dim) * bucket[js_ind].GetPhase(js_dim);
+
+		          tot_y -= bucket[js_ind].GetPhase(js_dim);
+		          tot_y2 -= bucket[js_ind].GetPhase(js_dim) * bucket[js_ind].GetPhase(js_dim);
+
+		          js_dx2 = tot_x2 / (js_nn+1) - (tot_x / (js_nn+1))* (tot_x / (js_nn+1)) + tot_y2 / (size - js_nn - 1) + (tot_y / (size - js_nn - 1))*(tot_y / (size - js_nn - 1));
+		          if(js_ind == start + js_nn) js_dx = js_dx2 + 1.0;
+		          if(js_dx2 < js_dx){ k=js_ind; splitvalue=bucket[k].GetPhase(js_dim); splitdim=js_dim;}
+		      }
+		    }
+		    js_qsort(js_ind0, js_ind1, splitdim);
 
 		    //k = start + (size - 1) / 2;
 		    //splitvalue = (this->*medianfunc)(splitdim, k, start, end, otp, irearrangeandbalance);
