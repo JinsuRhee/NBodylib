@@ -592,13 +592,13 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    Double_t bnd[6][2];
 	    Int_t size = end - start, k;
 	    Int_tree_t id = 0;
-	    int splitdim;
+	    int splitdim=-1;
 	    Double_t splitvalue;
 	    int js_ind0 = start;
 	    int js_ind1 = end-1;
-	    int js_ompskip=-1;
+        int js_nn = (end - start) / 8; // Buffer for splitting
+        double js_dx=0.;
 
-        
 	    //if not building in parallel can set ids here and update number of nodes
 	    //otherwise, must set after construction
 	    if (ibuildinparallel == false) {
@@ -606,54 +606,120 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    numnodes++;
 	    }
 
+        //Determine Splitdim & Splitval
+        for(int js_dim=0; js_dim<ND; js_dim++){
+            for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
+                if(dtree_intDist[bucket[js_ind].GetID()][js_dim] > js_dx){
+                    splitdim=js_dim;
+                    k=js_ind;
+                    js_dx = dtree_intDist[bucket[js_ind].GetID()][js_dim];
+                }
+            }
+        }
+
+        if( (js_dx>2.0*js_rdist) || (js_dx<2.0*js_rdist && size < 1000000)){ //    max(dx) < b || max(dx) > b && too small number of ptcls
+            //Make Leaf
+            if (ibuildinparallel == false) numleafnodes++;
+            for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+
+            LeafNode *js_LN;
+            js_LN = new LeafNode(id, start, end, bnd, ND);
+            js_LN->SetLeaf(1);
+
+            return js_LN;
+        }
+        else{
+            bool irearrangeandbalance=true;
+            if (ikeepinputorder) irearrangeandbalance=false;
+            js_qsort(js_ind0, js_ind1, splitdim);
+        }
 	    //See whether this OMP region is further decomposed or not.
 	    //If the maximum interparticle distance is quite larger than the linking length,
 	    // decompose the domain further.
-	    if (size <= b){
-		    js_ompskip=1;
-		    if(size > 1000000){ // Minimum size of OMP domain (arbitrary chosen)
-			    double js_dx=0., js_dx2;
-			    int js_nn = (end - start) / 8; // Buffer for splitting
-			    for(int js_dim=0; js_dim<ND; js_dim++){
-				    js_qsort(js_ind0, js_ind1, js_dim);
-				    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
-					    js_dx2 = abs(bucket[js_ind+1].GetPhase(js_dim) - bucket[js_ind].GetPhase(js_dim));
-					    if(js_dx2 > js_dx) js_dx = js_dx2;
-				    }
-
-				    if(js_dx > 2.0*js_rdist){js_ompskip=-1; break;}
-				    js_dx = 0.;
-			    }
-		    }
-	    }
-
-	    //Leaf Node Construction
-	    if (js_ompskip>0){
-		    if (ibuildinparallel == false) numleafnodes++;
-		    for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
-
-		    LeafNode *js_LN;
-		    js_LN = new LeafNode(id, start, end, bnd, ND);
-		    js_LN->SetLeaf(1);
-
-		    return js_LN;
-	    }
-	    else
-	    {
-		    bool irearrangeandbalance=true;
-		    if (ikeepinputorder) irearrangeandbalance=false;
-
-		    splitdim = DetermineSplitDim(start, end, bnd, otp);
-		    js_qsort(js_ind0, js_ind1, splitdim);
-
-		    double js_dx=0., js_dx2;
-		    int js_nn = (end - start) / 8;
-
-		    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
-			    js_dx2 = abs(bucket[js_ind+1].GetPhase(splitdim) - bucket[js_ind].GetPhase(splitdim));
-			    if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(splitdim);}
-		    }
-	    }
+//	    if (size <= b){
+//		    js_ompskip=1;
+//		    if(size > 1000000){ // Minimum size of OMP domain (arbitrary chosen)
+//			    //double js_dx=0., js_dx2;
+//			    //int js_nn = (end - start) / 8; // Buffer for splitting
+//			    //for(int js_dim=0; js_dim<ND; js_dim++){
+//				//    js_qsort(js_ind0, js_ind1, js_dim);
+//				//    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
+//				//	    js_dx2 = abs(bucket[js_ind+1].GetPhase(js_dim) - bucket[js_ind].GetPhase(js_dim));
+//				//	    if(js_dx2 > js_dx) js_dx = js_dx2;
+//				//    }
+////
+////				//    if(js_dx > 2.0*js_rdist){js_ompskip=-1; splitdim=js_dim; break;}
+////				//    js_dx = 0.;
+//			    //}
+//
+//                double js_dx=0.; js_dx2;
+//                int js_nn = (end-start)/8;
+//
+//                for(int js_dim=0; js_dim<ND; js_dim++){
+//                    for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
+//                        if(dtree_intDist[bucket[js_ind].GetID()][js_dim] > js_dx){
+//                            js_dx = dtree_intDist[bucket[js_ind].GetID()][js_dim];
+//                            if(js_dx > 2.0*js_rdist){js_ompskip=-1; splitdim=js_dim; break;}
+//                        }
+//                    }
+//                }
+//		    }
+//	    }
+//
+//	    //Leaf Node Construction
+//	    if (js_ompskip>0){
+//		    if (ibuildinparallel == false) numleafnodes++;
+//		    for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+//
+//		    LeafNode *js_LN;
+//		    js_LN = new LeafNode(id, start, end, bnd, ND);
+//		    js_LN->SetLeaf(1);
+//
+//		    return js_LN;
+//	    }
+//	    else
+//	    {
+//		    bool irearrangeandbalance=true;
+//		    if (ikeepinputorder) irearrangeandbalance=false;
+//
+//		    if(splitdim<0){
+//                for(int js_dim=0; js_dim<ND; js_dim++){
+//                    for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
+//                        if(dtree_intDist[bucket[js_ind].GetID()][js_dim] > js_dx){
+//                            js_dx = dtree_intDist[bucket[js_ind].GetID()][js_dim];
+//                        }
+//                    }
+//                }
+//            }
+//
+//            js_qsort(js_ind0, js_ind1, splitdim);
+//
+/////
+//		    double js_dx=0., js_dx2;
+//		    int js_nn = (end - start) / 8;
+//
+//		    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
+//			    js_dx2 = abs(bucket[js_ind+1].GetPhase(splitdim) - bucket[js_ind].GetPhase(splitdim));
+//			    if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(splitdim);}
+//		    }
+//
+//            //check whether splitting done for larger interparticle distance
+//            if(js_dx < 2.0*js_rdist){
+//                int dim_can[ND-1];
+//                for(int js_ind=0; js_ind<ND-1; js_ind++) dim_can[js_ind] = (splitdim + js_ind)%ND;
+//
+//                for(int js_ind=0; js_ind<ND-1; js_ind++){
+//                    js_qsort(js_ind0, js_ind1, dim_can[js_ind]);
+//
+//                    for(int i2=start + js_nn; i2<end - js_nn; i2++){
+//                        js_dx2 = abs(bucket[i2+1].GetPhase(dim_can[js_ind]) - bucket[i2].GetPhase(dim_can[js_ind]));
+//                        if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(dim_can[js_ind]); splitdim=dim_can[js_ind];}
+//                    }
+//                }
+//
+//                js_qsort(js_ind0, js_ind1, splitdim);
+//            } 
+//	    }
 
 	    //Now Split the node
 	    //run the node construction in parallel
@@ -1458,7 +1524,17 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         anisotropic=aniso;
         scalespace = scale;
         metric = m;
-	js_rdist = rdist;
+	    js_rdist = rdist;
+        //Store interparticle distance first
+        dtree_intDist = new double* [numparts];
+        for(Int_t i=0; i<numparts; i++){dtree_intDist[i]= new double[3];}
+        for(int j=0; j<3; j++){
+            js_qsort(0, numparts, j);
+            for(Int_t i=1; i<numparts-1; i++){
+                dtree_intDist[i][j] = abs(bucket[i+1].GetPhase(j) - bucket[i].GetPhase(j));
+            }
+        }
+
         if (Period!=NULL)
         {
             period=new Double_t[3];
@@ -1479,6 +1555,9 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
+
+        //for(Int_t i=0; i<numparts; i++) delete[] dtree_intDist[i];
+        
 #ifdef USEOPENMP
         omp_set_nested(inested);
 #endif

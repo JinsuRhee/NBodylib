@@ -106,9 +106,10 @@ namespace NBody
         Int_t b;
         ///max number of dimensions of tree
         const static int MAXND=6;
-	///Linking length for building OMP domains
-	Double_t js_rdist;
-	Int_t js_adt;
+	    ///Linking length for building OMP domains
+	    Double_t js_rdist;
+	    Int_t js_adt;
+        double **dtree_intDist;
 
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
