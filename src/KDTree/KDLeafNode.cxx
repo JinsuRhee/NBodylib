@@ -515,14 +515,16 @@ namespace NBody
         }
     }
 
-    void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
+    void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target, Int_t *NodeVisit)
     {
         //if bucket already linked and particle already part of group, do nothing.
         //if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
 	if(BucketFlag[nid])return;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
-        int flag=Head[bucket_start];
+        //int flag=Head[bucket_start];
+        int flag = 1;
+    NodeVisit[nid] ++;
 
 	//--JS--
 	//Node Skip by using trigonometric inequalities only acts when numdim==3
@@ -552,33 +554,30 @@ namespace NBody
 		}
 	}
 	else{
-                Int_t id;
-                Double_t dist2;
-                for (Int_t i = bucket_start; i < bucket_end; i++)
-                {
-                    //if (flag!=Head[i])flag=0;
-                    id=bucket[i].GetID();
-                    if (Group[id]) continue;
-                    dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
-                    if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
-
-                    //if (flag!=Head[i])flag=0;
+        Int_t id;
+        Double_t dist2;
+        for (Int_t i = bucket_start; i < bucket_end; i++)
+        {
+            //if (flag!=Head[i])flag=0;
+            id=bucket[i].GetID();
+            if (Group[id]) continue;
+            dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
+            if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
+            //if (flag!=Head[i])flag=0;
 		    //flag=0;
 			if(Group[id]==0)flag=0;
 
-                    if (dist2 < fdist2) {
-                        Group[id]=iGroup;
-                        Fifo[iTail++]=i;
-                        Len[iGroup]++;
-
-                        Next[Tail[Head[target]]]=Head[i];
-                        Tail[Head[target]]=Tail[Head[i]];
-                        Head[i]=Head[target];
-
-                        if(iTail==nActive)iTail=0;
-                        flag=0;
-                    }
-                }
+            if (dist2 < fdist2) {
+                Group[id]=iGroup;
+                Fifo[iTail++]=i;
+                Len[iGroup]++;
+                Next[Tail[Head[target]]]=Head[i];
+                Tail[Head[target]]=Tail[Head[i]];
+                Head[i]=Head[target];
+                if(iTail==nActive)iTail=0;
+                flag=0;
+            }
+        }
 	}
 		//Otherwise check each particle individually
 
@@ -632,7 +631,7 @@ namespace NBody
         if (flag) {
 		BucketFlag[nid]=1;
 		if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;
-	}
+    	}
     }
     void LeafNode::FOFSearchCriterion(Double_t rd, FOFcompfunc cmp, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
@@ -641,7 +640,8 @@ namespace NBody
 	if(BucketFlag[nid])return;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
-	int flag=Head[bucket_start];
+	//int flag=Head[bucket_start];
+    int flag=1;
 
 
 	Double_t js_pos[3], js_vel[3], js_dist=0., js_rr;
@@ -946,9 +946,9 @@ namespace NBody
     {
         SearchCriterionNoDist(rd,cmp,params,iGroup,bucket,Group,off,p0,dim);
     }
-    void LeafNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target)
+    void LeafNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target, Int_t *NodeVisit)
     {
-        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
     }
 
     void LeafNode::FOFSearchCriterionPeriodic(Double_t rd, FOFcompfunc cmp, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t *off, Double_t *p, Int_t target)

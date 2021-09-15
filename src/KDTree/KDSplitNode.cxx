@@ -862,11 +862,13 @@ namespace NBody
         }
     }
 
-    void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
+    void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target, Int_t *NodeVisit)
     {
 	//if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
 	if(BucketFlag[nid])return;
-	int flag=Head[bucket_start];
+	//int flag=Head[bucket_start];
+    int flag=1;
+    NodeVisit[nid] ++;
 
 	Double_t js_pos[6], js_dist, js_rr;
 	for(int js_j=0; js_j<numdim; js_j++) js_pos[js_j] = bucket[target].GetPhase(js_j);
@@ -902,23 +904,23 @@ namespace NBody
         	Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
         	if (new_off < 0)
         	{
-        	    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+        	    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target,NodeVisit);
         	    rd += -old_off*old_off + new_off*new_off;
         	    if (rd < fdist2)
         	    {
         	        off[cut_dim] = new_off;
-        	        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+        	        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target,NodeVisit);
         	        off[cut_dim] = old_off;
         	    }
         	}
         	else
         	{
-        	    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+        	    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target,NodeVisit);
         	    rd += -old_off*old_off + new_off*new_off;
         	    if (rd < fdist2)
         	    {
         	        off[cut_dim] = new_off;
-        	        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+        	        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target,NodeVisit);
         	        off[cut_dim] = old_off;
         	    }
         	}
@@ -964,7 +966,8 @@ namespace NBody
     {
 	    //if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
 	    if(BucketFlag[nid])return;
-	    int flag = Head[bucket_start];
+	    //int flag = Head[bucket_start];
+        int flag=1;
 
 	    Double_t js_pos[3], js_vel[3], js_dist=0., js_rr;
 	    Double_t js_posCen[3], js_velCen[3];
@@ -1655,10 +1658,10 @@ namespace NBody
         }
     }
     //here code is effectively like that of FOFsearchBallPeriodic but adjust the particle's position in the left/right search
-    void SplitNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Double_t *p, Int_t target)
+    void SplitNode::FOFSearchBallPeriodic(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Double_t *p, Int_t target, Int_t *NodeVisit)
     {
         //first search normal particle
-        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+        FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
         Coordinate x0(bucket[target].GetPosition()),xp;
         Double_t sval;
         for (int k=0;k<NSPACEDIM;k++) {
@@ -1666,7 +1669,7 @@ namespace NBody
             sval=PeriodicReflection1D(x0,xp,p,k);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
             }
         }
         if (NSPACEDIM==3) {
@@ -1674,19 +1677,19 @@ namespace NBody
             sval=PeriodicReflection2D(x0,xp,p,0,1);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
             }
             for (int j = 0; j < NSPACEDIM; j++) off[j] = 0.0;
             sval=PeriodicReflection2D(x0,xp,p,0,2);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
             }
             for (int j = 0; j < NSPACEDIM; j++) off[j] = 0.0;
             sval=PeriodicReflection2D(x0,xp,p,1,2);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
             }
         }
         // search all axis if current max dist less than search radius
@@ -1695,7 +1698,7 @@ namespace NBody
             sval=PeriodicReflectionND(x0,xp,p,NSPACEDIM);
             if (fdist2>sval*sval) {
                 for (int j=0;j<3;j++) bucket[target].SetPosition(j,xp[j]);
-                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target);
+                FOFSearchBall(rd, fdist2, iGroup, nActive, bucket, Group, Len, Head, Tail, Next, BucketFlag, Fifo, iTail, off, target, NodeVisit);
             }
         }
         for (int j=0;j<3;j++) bucket[target].SetPosition(j,x0[j]);
