@@ -524,7 +524,7 @@ namespace NBody
         //then BucketFlag[nid]=1
         //int flag=Head[bucket_start];
         int flag = 1;
-    NodeVisit[nid] ++;
+        NodeVisit[nid] ++;
 
 	//--JS--
 	//Node Skip by using trigonometric inequalities only acts when numdim==3
@@ -564,8 +564,8 @@ namespace NBody
             dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
             if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
             //if (flag!=Head[i])flag=0;
-		    //flag=0;
-			if(Group[id]==0)flag=0;
+		    flag=0;
+			//if(Group[id]==0)flag=0;
 
             if (dist2 < fdist2) {
                 Group[id]=iGroup;
@@ -575,7 +575,7 @@ namespace NBody
                 Tail[Head[target]]=Tail[Head[i]];
                 Head[i]=Head[target];
                 if(iTail==nActive)iTail=0;
-                flag=0;
+                //flag=0;
             }
         }
 	}
@@ -680,12 +680,12 @@ namespace NBody
         	    Int_t id=bucket[i].GetID();
         	    //if already linked don't do anything
         	    //if (Group[id]==iGroup) continue;
-		    if (Group[id]) continue;
+		        if (Group[id]) continue;
         	    //if tag below zero then don't do anything
         	    if (Group[id]<0) continue;
 
         	    //if (flag!=Head[i])flag=0;
-		    flag=0;
+		        flag=0;
 
         	    if (cmp(bucket[target],bucket[i],params)) {
         	        Group[id]=iGroup;
@@ -696,7 +696,7 @@ namespace NBody
         	        Tail[Head[target]]=Tail[Head[i]];
         	        Head[i]=Head[target];
         	        if(iTail==nActive)iTail=0;
-        	        flag=0;
+        	        //flag=0;
         	    }
         	}
 	}
@@ -722,7 +722,11 @@ namespace NBody
         //        flag=0;
         //    }
         //}
-        if (flag) BucketFlag[nid]=1;
+
+        if (flag) {
+            BucketFlag[nid]=1;
+            if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;
+        }
     }
     void LeafNode::FOFSearchCriterionSetBasisForLinks(Double_t rd, FOFcompfunc cmp, FOFcheckfunc check, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {

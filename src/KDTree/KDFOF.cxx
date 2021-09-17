@@ -47,8 +47,9 @@ namespace NBody
         //flags for memory management
         bool iph,ipt,ipn,ipl;
 
-	//Count Node Visits
-	Int_t *pNodeVisit = new Int_t[numnodes];
+	    //Count Node Visits
+        double js_start, js_end;
+	    Int_t *pNodeVisit = new Int_t[numnodes];
 
         //arrays used in determining group id.
         //pHead contains the index of the particle at head of the particles group
@@ -76,6 +77,7 @@ namespace NBody
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
 
         for (Int_t i=0;i<numparts;i++){
+            //js_start    = omp_get_wtime();
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
             if(pGroup[id]!=0) continue;
@@ -92,7 +94,6 @@ namespace NBody
                 //if reached the head of Index list, go back to zero
                 if (iHead==numparts) iHead=0;
 
-		Int_t old_pLen = pLen[iGroup];
                 //now begin Ball search. This node routine finds all particles
                 //within a distance fdist2, marks all particles using their IDS and pGroup array
                 //adjusts the Fifo array, iTail and pLen.
@@ -101,64 +102,34 @@ namespace NBody
                 if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid, pNodeVisit);
                 else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid, pNodeVisit);
 
-		//SPLAY
-		//new ver
-		if(iHead!=iTail){
-			Int_t nlink = pLen[iGroup] - old_pLen;
-			Int_t i3, iTail2;
-			if(nlink > 0){
-				double dist_dum, dist_dum2 = -1.0;
-				double sp_pos[6], sp_pos2[6];
-				for(int j=0; j<MAXND; j++) sp_pos[j] = bucket[iid].GetPhase(j);
-				for(Int_t i2=0; i2<nlink; i2++){
-					i3 = iTail - i2 - 1;
-					if(i3<0) i3 += numparts;
-					for(int j=0; j<MAXND; j++) sp_pos2[j] = bucket[Fifo[i3]].GetPhase(j);
-					dist_dum = DistanceSqd(sp_pos, sp_pos2, MAXND);
-					if(dist_dum > dist_dum2){
-						dist_dum2 = dist_dum;
-						iTail2 = i3;
-					}
-				}
-			}
-			else{
-				iTail2 = iTail - 1;
-				if(iTail2 < 0) iTail2 += numparts;
-			}
-			
-			Int_tree_t Fifo_dum;
-		        Fifo_dum = Fifo[iTail2];
-			Fifo[iTail2] = Fifo[iHead];
-			Fifo[iHead] = Fifo_dum;
-		}
-
-		//old ver
-		//if(iHead!=iTail){
-		//	Int_tree_t Fifo_dum;
-		//	Int_tree_t iTail2;
-		//	iTail2 = iTail-1;
-		//	if(iTail2 == -1) iTail2=numparts-1;
-		//        Fifo_dum = Fifo[iTail2];
-		//	Fifo[iTail2] = Fifo[iHead];
-		//	Fifo[iHead] = Fifo_dum;
-		//}
+		        //SPLAY
+		        //old ver
+		        if(iHead!=iTail){
+		        	Int_tree_t Fifo_dum;
+		        	Int_tree_t iTail2;
+		        	iTail2 = iTail-1;
+		        	if(iTail2 == -1) iTail2=numparts-1;
+		                Fifo_dum = Fifo[iTail2];
+		        	Fifo[iTail2] = Fifo[iHead];
+		        	Fifo[iHead] = Fifo_dum;
+		        }
             }
 
             if(pLen[iGroup]<minnum){
-
-		//Closed needless nodes
-		Node* contain_node = FindLeafNode(bucket[i].GetID());
-		Int_t i0 = contain_node->GetStart();
-		Int_t i1 = contain_node->GetEnd();
-		int useless_flag = 1;
-		for(Int_t ii=i0; ii<i1; ii++){
-			if(pGroup[ii]!=iGroup)useless_flag=0;
-		}
-		if(useless_flag){
-			pBucketFlag[contain_node->GetID()]=1;
-			if(pBucketFlag[(contain_node->GetSibling())->GetID()]==1)pBucketFlag[(contain_node->GetParent())->GetID()]=1;
-		}
-		
+		        //Closed needless nodes
+		        Node* contain_node = FindLeafNode(bucket[i].GetID());
+		        Int_t i0 = contain_node->GetStart();
+		        Int_t i1 = contain_node->GetEnd();
+		        int useless_flag = 1;
+		        for(Int_t ii=i0; ii<i1; ii++){
+		        	if(pGroup[ii]!=iGroup)useless_flag=0;
+                }		       
+		        if(useless_flag){
+		        	pBucketFlag[contain_node->GetID()]=1;
+		        	if(pBucketFlag[(contain_node->GetSibling())->GetID()]==1)pBucketFlag[(contain_node->GetParent())->GetID()]=1;
+		        }
+		    
+                //Remove groups lessthan minpart
                 Int_t ii=pHead[pGroupHead[iGroup]];
                 do {
                     pGroup[bucket[ii].GetID()]=-1;
@@ -170,19 +141,22 @@ namespace NBody
 
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
-	double js_mean = 0.;
-	Int_t js_max = 0, js_min = 0;
-	for(Int_t i=0;i<numnodes;i++){
-		if(i==0||pNodeVisit[i]>=js_max) js_max = pNodeVisit[i];
-		if(i==0||pNodeVisit[i]<=js_min) js_min = pNodeVisit[i];
-		js_mean += pNodeVisit[i];
-	}
-	js_mean /= numparts;
-	cout<<"%123123	"<<numparts<<" / MEAN : "<<js_mean<<" / MAX : "<<js_max<<" / MIN : "<<js_min<<endl;
+        //Part for log %123123
+	    //double js_mean = 0.;
+	    //Int_t js_max = 0, js_min = 0;
+	    //for(Int_t i=0;i<numnodes;i++){
+	    //	if(i==0||pNodeVisit[i]>=js_max) js_max = pNodeVisit[i];
+	    //	if(i==0||pNodeVisit[i]<=js_min) js_min = pNodeVisit[i];
+	    //	js_mean += pNodeVisit[i];
+	    //}
+        //js_mean /= numparts;
+        //js_end  = omp_get_wtime();
+	    //cout<<"%123123	N :"<<numparts<<" / MEAN : "<<js_mean<<" / MAX : "<<js_max<<" / MIN : "<<js_min<<" / Time : "<<js_end - js_start<<endl;
+
         //free memory for arrays that are not needed
         delete[] Fifo;
         delete[] pBucketFlag;
-	delete[] pNodeVisit;
+	    delete[] pNodeVisit;
         if (iph) delete[] pHead;
         if (ipt) delete[] pTail;
         if (ipn) delete[] pNext;
@@ -280,16 +254,16 @@ namespace NBody
                 if (period==NULL) root->FOFSearchCriterion(0.0,cmp,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
                 else root->FOFSearchCriterionPeriodic(0.0,cmp,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
 
-		//SPLAY
-		if(iHead!=iTail){
-			Int_tree_t Fifo_dum;
-			Int_tree_t iTail2;
-			iTail2 = iTail-1;
-			if(iTail2 == -1) iTail2=numparts-1;
-		        Fifo_dum = Fifo[iTail2];
-			Fifo[iTail2] = Fifo[iHead];
-			Fifo[iHead] = Fifo_dum;
-		}
+		        //SPLAY
+		        if(iHead!=iTail){
+		        	Int_tree_t Fifo_dum;
+		        	Int_tree_t iTail2;
+		        	iTail2 = iTail-1;
+		        	if(iTail2 == -1) iTail2=numparts-1;
+		                Fifo_dum = Fifo[iTail2];
+		        	Fifo[iTail2] = Fifo[iHead];
+		        	Fifo[iHead] = Fifo_dum;
+		        }
             }
             //make sure group big enough
             if(pLen[iGroup]<minnum){

@@ -14,6 +14,7 @@
 */
 
 #include <KDTree.h>
+#include <unistd.h>
 
 namespace NBody
 {
@@ -342,8 +343,14 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 i = left-1;
                 j = right;
                 while (1) {
-                    while (i < j) if (bucket[++i].GetPosition(d) >= x) break;
-                    while (i < j) if (bucket[--j].GetPosition(d) <= x) break;
+                    while (i < j) {
+                        if (i>end-1) cout<<"%123123 A : "<<i<<" / "<<start<<" / "<<k<<" / "<<end<<endl;
+                        if (bucket[++i].GetPosition(d) >= x) break;
+                    }
+                    while (i < j) {
+                        if (j<start) cout<<"%123123 B : "<<j<<" / "<<start<<" / "<<k<<" / "<<end<<endl;
+                        if (bucket[--j].GetPosition(d) <= x) break;
+                    }
                     swap(bucket[i],bucket[j]);
                     pval = &bucket[j];
                     if (j <= i) break;
@@ -355,6 +362,9 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 pval = NULL;
                 if (i >= k) right = i - 1;
                 if (i <= k) left = i + 1;
+
+                if (left>end-1) cout<<"%123123 C : "<<left<<" / "<<start<<" / "<<k<<" / "<<end<<endl;
+                if (right<start) cout<<"%123123 D : "<<right<<" / "<<start<<" / "<<k<<" / "<<end<<endl;
             }
             return bucket[k].GetPosition(d);
         }
@@ -605,19 +615,46 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    id = numnodes;
 		    numnodes++;
 	    }
+        
+
+            if (ibuildinparallel == false) numleafnodes++;
+            for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+
+            LeafNode *js_LN;
+            js_LN = new LeafNode(id, start, end, bnd, ND);
+            js_LN->SetLeaf(1);
+
+            return js_LN;
 
         //Determine Splitdim & Splitval
+    //    Int_t id0;
+    //    for(int js_dim=0; js_dim<ND; js_dim++){
+    //        for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
+    //            id0 = bucket[js_ind].GetID();
+    //            if(dtree_intDist[id0][js_dim] > js_dx){
+    //                splitdim=js_dim;
+    //                k=js_ind;
+    //                js_dx = dtree_intDist[id0][js_dim];
+    //            }
+    //        }
+    //    }
         for(int js_dim=0; js_dim<ND; js_dim++){
+            js_qsort(js_ind0, js_ind1, js_dim);
+            double js_dx2;
+            Int_t js_nn = (end - start) / 8;
+            if(js_nn==0)js_nn=1;
             for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
-                if(dtree_intDist[bucket[js_ind].GetID()][js_dim] > js_dx){
-                    splitdim=js_dim;
+                js_dx2 = bucket[js_ind+1].GetPhase(js_dim) - bucket[js_ind].GetPhase(js_dim);
+                if(js_dx2 > js_dx){
+                    splitdim = js_dim;
+                    js_dx = js_dx2;
                     k=js_ind;
-                    js_dx = dtree_intDist[bucket[js_ind].GetID()][js_dim];
                 }
+
             }
         }
 
-        if( (js_dx>2.0*js_rdist) || (js_dx<2.0*js_rdist && size < 1000000)){ //    max(dx) < b || max(dx) > b && too small number of ptcls
+        if( (js_dx<pow(js_rdist,1./3) || (js_dx>pow(js_rdist,1./3)) && size < 1000000)){ //    max(dx) < b || max(dx) > b && too small number of ptcls
             //Make Leaf
             if (ibuildinparallel == false) numleafnodes++;
             for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
@@ -631,8 +668,13 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         else{
             bool irearrangeandbalance=true;
             if (ikeepinputorder) irearrangeandbalance=false;
+            //splitvalue = (this->*medianfunc)(splitdim, k, start, end, otp, irearrangeandbalance);
+
             js_qsort(js_ind0, js_ind1, splitdim);
+            splitvalue=bucket[k].GetPhase(splitdim);
         }
+
+        
 	    //See whether this OMP region is further decomposed or not.
 	    //If the maximum interparticle distance is quite larger than the linking length,
 	    // decompose the domain further.
@@ -804,7 +846,41 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    if (ikeepinputorder) irearrangeandbalance=false;
 
 		    splitdim = DetermineSplitDim(start, end, bnd, otp);
-		    js_qsort(js_ind0, js_ind1, splitdim);
+
+        //    cout<<"%123123 ::: C "<<splitdim<<endl;
+        //    //Determine Splitval
+        //    double js_dx=0.;
+        //    int js_nn = (end - start) / 8;
+        //    if(js_nn<1)js_nn=1;
+        //    Int_t id0;
+        //    for(int js_ind=start+js_nn; js_ind<end-js_nn; js_ind++){
+        //        cout<<"%123123      A : "<<bucket[js_ind].GetID()<<" / "<<numparts<<endl;
+        //        //cout<<"%123123      B : "<<dtree_intDist[bucket[js_ind].GetID()][splitdim]<<endl;
+        //        cout<<"%123123      C : "<<js_dx<<" / "<<js_ind<<" / "<<k<<endl;
+        //        id0 = bucket[js_ind].GetID();
+        //        if(dtree_intDist[id0][splitdim] > js_dx){
+        //            k=js_ind;
+        //            //splitvalue=bucket[k].GetPhase(splitdim);
+        //            js_dx = dtree_intDist[id0][splitdim];
+        //        }
+        //        cout<<"%123123      D :"<<endl;
+        //    }
+        //    cout<<"%123123 ::: D "<<k<<" / "<<id0<<" / "<<js_dx<<endl;
+//
+//        //    splitvalue = (this->*medianfunc)(splitdim, k, start, end, otp, irearrangeandbalance);
+//        //    //js_qsort(js_ind0, js_ind1, splitdim);
+//        //    //splitvalue  = bucket[k].GetPhase(splitdim);
+//
+//        //    double js_dx2=0.; js_dx;
+//        //    js_dx2 = bucket[k].GetPhase(splitdim);
+//        //    for(Int_t i=start; i<end; i++){
+//        //        js_dx = bucket[i].GetPhase(splitdim);
+//        //        if(i>k && js_dx < js_dx2) cout<<"       WWWWWW "<<js_dx<<" / "<<js_dx2<<endl;
+//        //        if(i<k && js_dx > js_dx2) cout<<"       AAAAAA "<<js_dx<<" / "<<js_dx2<<endl;
+//        //    }
+//		//    //js_qsort(js_ind0, js_ind1, splitdim);
+        //    cout<<"%123123 ::: F"<<endl;
+
 
 		    double js_dx=0., js_dx2;
 		    int js_nn = (end - start) / 8;
@@ -1525,15 +1601,6 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         scalespace = scale;
         metric = m;
 	    js_rdist = rdist;
-        //Store interparticle distance first
-        dtree_intDist = new double* [numparts];
-        for(Int_t i=0; i<numparts; i++){dtree_intDist[i]= new double[3];}
-        for(int j=0; j<3; j++){
-            js_qsort(0, numparts, j);
-            for(Int_t i=1; i<numparts-1; i++){
-                dtree_intDist[i][j] = abs(bucket[i+1].GetPhase(j) - bucket[i].GetPhase(j));
-            }
-        }
 
         if (Period!=NULL)
         {
@@ -1550,10 +1617,31 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             for (int j=0;j<ND;j++) {vol*=xvar[j];ivol*=ixvar[j];}
             if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
+
+            //Store interparticle distance first
+            //dtree_intDist = new double* [numparts];
+        //    Int_t id0;
+        //    dtree_intDist = new double* [numparts];
+        //    for(Int_t i=0; i<numparts; i++)dtree_intDist[i]= new double[ND];
+        //    for(int j=0; j<ND; j++){
+        //        js_qsort(0, numparts-1, j);
+        //        for(Int_t i=0; i<numparts; i++){
+        //            id0 = bucket[i].GetID();
+        //            if(i==numparts-1){
+        //                dtree_intDist[id0][j] = 0.;
+        //            }
+        //            else{
+        //                dtree_intDist[id0][j] = abs(bucket[i+1].GetPhase(j) - bucket[i].GetPhase(j));
+        //            }
+        //        }
+        //    }
             root=BuildNodes_OMP(0,numparts, otp);
             if (ibuildinparallel) BuildNodeIDs();
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
+
+        //    for(Int_t i=0; i<numparts; i++)delete[] dtree_intDist[i];
+        //    delete[] dtree_intDist;
         }
 
         //for(Int_t i=0; i<numparts; i++) delete[] dtree_intDist[i];
@@ -1613,9 +1701,31 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             for (int j=0;j<ND;j++) {vol*=xvar[j];ivol*=ixvar[j];}
             if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
+
+
+            //Store interparticle distance first
+        //    dtree_intDist = new double* [numparts];
+        //    for(Int_t i=0; i<numparts; i++)dtree_intDist[i]= new double[ND];
+        //    Int_t id0;
+        //    for(int j=0; j<ND; j++){
+        //        js_qsort(0, numparts-1, j);
+        //        for(Int_t i=0; i<numparts; i++){
+        //            id0 = bucket[i].GetID();
+        //            if(i==numparts-1){
+        //                dtree_intDist[id0][j] = 0.;
+        //            }
+        //            else{
+        //                dtree_intDist[id0][j] = abs(bucket[i+1].GetPhase(j) - bucket[i].GetPhase(j));
+        //            }
+        //        }
+        //    }
+
             root=BuildNodes_ADT(0,numparts, otp);
-	    root->SetFarthest(1e31);
-	    for(int js_i=0; js_i<ND; js_i++) root->SetCenter(0., js_i);
+
+	        root->SetFarthest(1e31);
+	        for(int js_i=0; js_i<ND; js_i++) root->SetCenter(0., js_i);
+        //    for(Int_t i=0; i<numparts; i++)delete[] dtree_intDist[i];
+        //    delete[] dtree_intDist;
 
             if (ibuildinparallel) BuildNodeIDs();
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
