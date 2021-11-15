@@ -198,7 +198,7 @@ namespace NBody
 
 	//Initially close node in which no bg particles are
 	//%123123123
-	//FOFCriterion_CloseNodeFirst(root, pBucketFlag, pGroup);
+	FOFCriterion_CloseNodeFirst(root, pBucketFlag, pGroup);
 
         for (Int_t i=0;i<numparts;i++){
             //if particle already member of group, ignore and go to next particle
