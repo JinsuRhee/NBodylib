@@ -12,11 +12,12 @@
 #include <cmath>
 #include <sstream>
 #include <stdexcept>
-#include <Precision.h>
-#include <Coordinate.h>
-#include <Matrix.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
+
+#include "Coordinate.h"
+#include "Matrix.h"
+#include "Precision.h"
 
 using namespace std;
 namespace Math

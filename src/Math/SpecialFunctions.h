@@ -8,9 +8,10 @@
 
 #include <iostream>
 #include <complex>
-#include <Precision.h>
 #include <cmath>
 #include <gsl/gsl_sf.h>
+
+#include "Precision.h"
 
 
 using namespace std;

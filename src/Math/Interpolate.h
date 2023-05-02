@@ -7,8 +7,8 @@
 
 #include <iostream> 
 #include <cmath>
-#include <NBodyMath.h>
-#include <Precision.h>
+
+#include "Precision.h"
 
 using namespace std;
 namespace Math

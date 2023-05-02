@@ -14,10 +14,11 @@
 #include <gsl/gsl_monte_plain.h>
 #include <gsl/gsl_monte_miser.h>
 #include <gsl/gsl_monte_vegas.h>
-#include <Precision.h>
-#include <Function.h>
-#include <Interpolate.h>
-#include <Random.h>
+
+#include "Function.h"
+#include "Interpolate.h"
+#include "Precision.h"
+#include "Random.h"
 
 using namespace std;
 namespace Math

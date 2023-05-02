@@ -3,7 +3,9 @@
  */
 
 #include <cmath>
-#include <Integrate.h>
+
+#include "Exceptions.h"
+#include "Integrate.h"
 
 using namespace std;
 namespace Math

@@ -13,11 +13,12 @@
 #include <gsl/gsl_monte.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
-#include <Precision.h>
-#include <Function.h>
-#include <Matrix.h>
-#include <GMatrix.h>
-#include <Interpolate.h>
+
+#include "Function.h"
+#include "GMatrix.h"
+#include "Interpolate.h"
+#include "Matrix.h"
+#include "Precision.h"
 
 using namespace std;
 namespace Math

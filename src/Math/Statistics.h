@@ -7,11 +7,12 @@
 
 #include <iostream>
 #include <complex>
-#include <Precision.h>
-#include <Coordinate.h>
-#include <Matrix.h>
-#include <GMatrix.h>
 #include <cmath>
+
+#include "Coordinate.h"
+#include "GMatrix.h"
+#include "Matrix.h"
+#include "Precision.h"
 
 using namespace std;
 namespace Math

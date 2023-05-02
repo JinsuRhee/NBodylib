@@ -7,7 +7,8 @@
 
 #include <iostream>
 #include <cmath>
-#include <Precision.h>
+
+#include "Precision.h"
 
 using namespace std;
 namespace Math

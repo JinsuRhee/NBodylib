@@ -14,20 +14,21 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <Precision.h>
-#include <Exceptions.h>
-#include <Coordinate.h>
-#include <Coordinate2D.h>
-#include <Matrix2D.h>
-#include <Matrix.h>
-#include <GMatrix.h>
-#include <Function.h>
-#include <Integrate.h>
-#include <Interpolate.h>
-#include <Fitting.h>
-#include <SpecialFunctions.h>
-#include <Random.h>
-#include <Statistics.h>
+
+#include "Coordinate2D.h"
+#include "Coordinate.h"
+#include "Exceptions.h"
+#include "Fitting.h"
+#include "Function.h"
+#include "GMatrix.h"
+#include "Integrate.h"
+#include "Interpolate.h"
+#include "Matrix2D.h"
+#include "Matrix.h"
+#include "Precision.h"
+#include "Random.h"
+#include "SpecialFunctions.h"
+#include "Statistics.h"
 
 namespace Math {
 }

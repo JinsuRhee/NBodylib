@@ -20,12 +20,13 @@
 #ifdef HAVE_GSL22
 #include <gsl/gsl_multifit_nlinear.h>
 #endif
-#include <Precision.h>
-#include <Function.h>
-#include <Matrix.h>
-#include <GMatrix.h>
-#include <Interpolate.h>
-#include <ExtremaRootFinding.h>
+
+#include "ExtremaRootFinding.h"
+#include "Function.h"
+#include "GMatrix.h"
+#include "Interpolate.h"
+#include "Matrix.h"
+#include "Precision.h"
 
 using namespace std;
 namespace Math

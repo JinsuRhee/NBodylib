@@ -7,9 +7,10 @@
 
 #include <iostream>
 #include <complex>
-#include <Precision.h>
-#include <Coordinate2D.h>
 #include <cmath>
+
+#include "Coordinate2D.h"
+#include "Precision.h"
 
 using namespace std;
 namespace Math
