@@ -9,6 +9,34 @@
 namespace NBody
 {
 
+     void KDTree::FOF_Splay(Int_tree_t *Fifo, Int_t iid, Int_t nlink, Int_t iHead, Int_t iTail, Int_t old_pLen){
+
+	Int_t i3, iTail2;
+	if(nlink >0){
+		double sp_dist, sp_dist2 = -1.0;
+		double sp_pos[6], sp_pos2[6];
+		for(int j=0; j<MAXND; j++) sp_pos[j] = bucket[iid].GetPhase(j);
+		for(Int_t i2=0; i2<nlink; i2++){
+			i3=iTail - i2 - 1;
+			if(i3<0) i3 += numparts;
+			sp_dist = DistanceSqd(sp_pos, sp_pos2, MAXND);
+			if(sp_dist > sp_dist2){
+				sp_dist2 = sp_dist;
+				iTail2 = i3;
+			}
+		}
+	}
+	else{
+		iTail2 = iTail - 1;
+		if(iTail2 < 0) iTail2 += numparts;
+	}
+
+	Int_tree_t Fifo_dum;
+	Fifo_dum = Fifo[iTail2];
+	Fifo[iTail2]	= Fifo[iHead];
+	Fifo[iHead]	= Fifo_dum;
+    }
+
     Int_t* KDTree::FOF(Double_t fdist, Int_t &numgroup, Int_t minnum, int order,
         Int_tree_t *pHead, Int_tree_t *pNext, Int_tree_t *pTail, Int_tree_t *pLen,
         int ipcheckflag, FOFcheckfunc check, Double_t *params)
@@ -68,6 +96,8 @@ namespace NBody
                 //if reached the head of Index list, go back to zero
                 if (iHead==numparts) iHead=0;
 
+		Int_t old_pLen = pLen[iGroup]; // For SPLAY
+
                 //now begin Ball search. This node routine finds all particles
                 //within a distance fdist2, marks all particles using their IDS and pGroup array
                 //adjusts the Fifo array, iTail and pLen.
@@ -75,6 +105,13 @@ namespace NBody
                 for (int j = 0; j < 6; j++) off[j] = 0.0;
                 if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
                 else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
+
+
+		//SPLAY for better FOF search (refer to Rhee+22)
+		if(iHead!=iTail){
+			Int_t nlink = pLen[iGroup] - old_pLen;
+			FOF_Splay(Fifo, iid, nlink, iHead, iTail, old_pLen);
+		}
             }
             if(pLen[iGroup]<minnum){
                 Int_t ii=pHead[pGroupHead[iGroup]];

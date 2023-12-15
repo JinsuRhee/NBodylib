@@ -436,8 +436,13 @@ namespace NBody
         /// of comparison function where npc is number of parameters to be changed and npca is array containing indices of parameters to be altered.
         Int_t *FOFNNDistCriterion(FOFcompfunc p, Double_t *params, Int_t numNN, Int_t **nnIDs, Double_t **dist2,
                                   Double_t disfunc(Int_t , Double_t *), Int_t npc, Int_t *npca, Int_t &numgroups, Int_t minnum=8);
+
         //@}
 
+	/// \name For Performance update version (Rhee+22)
+	void FOF_Splay(Int_tree_t *Fifo, Int_t iid, Int_t nlink, Int_t iHead, Int_t iTail, Int_t old_pLen);
+	//@}
+	
         /// \name Ordering routines
         //@{
         /// As tree adjust order of particle array, it overwrites
