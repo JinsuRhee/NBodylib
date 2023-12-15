@@ -216,10 +216,18 @@ namespace NBody
                 iid=Fifo[iHead++];
                 if (iHead==numparts) iHead=0;
 
+		Int_t old_pLen = pLen[iGroup]; // For SPLAY
+
                 //now begin search.
                 for (int j = 0; j < 6; j++) off[j] = 0.0;
                 if (period==NULL) root->FOFSearchCriterion(0.0,cmp,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
                 else root->FOFSearchCriterionPeriodic(0.0,cmp,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
+
+		//SPLAY for better FOF search (refer to Rhee+22)
+		if(iHead!=iTail){
+			Int_t nlink = pLen[iGroup] - old_pLen;
+			FOF_Splay(Fifo, iid, nlink, iHead, iTail, old_pLen);
+		}
             }
 
             //make sure group big enough
@@ -325,6 +333,8 @@ namespace NBody
                 iid=Fifo[iHead++];
                 if (iHead==numparts) iHead=0;
 
+		Int_t old_pLen = pLen[iGroup]; // For SPLAY
+
                 //check if head particle should be used as basis for links
                 if (check(bucket[iid],params)==0) {
                     //now begin search.
@@ -332,6 +342,12 @@ namespace NBody
                     if (period==NULL) root->FOFSearchCriterionSetBasisForLinks(0.0,cmp,check,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
                     else root->FOFSearchCriterionSetBasisForLinksPeriodic(0.0,cmp,check,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
                 }
+
+		//SPLAY for better FOF search (refer to Rhee+22)
+		if(iHead!=iTail){
+			Int_t nlink = pLen[iGroup] - old_pLen;
+			FOF_Splay(Fifo, iid, nlink, iHead, iTail, old_pLen);
+		}
             }
 
             //make sure group big enough
@@ -739,8 +755,17 @@ namespace NBody
         while(iHead!=iTail) {
             iid=Fifo[iHead++];
             if (iHead==numparts) iHead=0;
+
+	    Int_t old_pLen = pLen[iGroup]; // For SPLAY
+
             for (int j = 0; j < 6; j++) off[j] = 0.0;
             root->FOFSearchCriterion(0.0,cmp,params,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
+
+		//SPLAY for better FOF search (refer to Rhee+22)
+		if(iHead!=iTail){
+			Int_t nlink = pLen[iGroup] - old_pLen;
+			FOF_Splay(Fifo, iid, nlink, iHead, iTail, old_pLen);
+		}
         }
         nsize=pLen[iGroup];
         delete[] pBucketFlag;
