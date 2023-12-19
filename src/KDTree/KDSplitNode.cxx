@@ -864,6 +864,10 @@ namespace NBody
 
     void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
+	if(BucketFlag[nid]) return;
+	int flat=1;
+
+	flat=0;
         Double_t old_off = off[cut_dim];
         Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
         if (new_off < 0)
@@ -888,11 +892,24 @@ namespace NBody
                 off[cut_dim] = old_off;
             }
         }
+	if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
+
+	if(flag){
+		BucketFlag[nid]=1;
+		if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;
+	}
     }
 
     //key here is params which tell one how to search the tree
     void SplitNode::FOFSearchCriterion(Double_t rd, FOFcompfunc cmp, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
+
+	if(BucketFlag[nid])return;
+
+	int flag=1;
+
+	flag=0
+
         Double_t old_off = off[cut_dim];
         Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
         //types of trees
@@ -902,6 +919,9 @@ namespace NBody
         else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
         else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
         else invscaling=1.0;
+
+
+
         if (new_off < 0)
         {
             left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
@@ -924,6 +944,12 @@ namespace NBody
                 off[cut_dim] = old_off;
             }
         }
+
+	if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
+	if(flag){
+		BucketFlag[nid]=1;
+		if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;
+	}
     }
 
     //key here is params which tell one how to search the tree
