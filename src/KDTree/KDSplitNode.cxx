@@ -920,12 +920,13 @@ namespace NBody
         else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
         else invscaling=1.0;
 
-
+	new_off *= sqrt(invscaling);
 
         if (new_off < 0)
         {
             left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-            rd += (-old_off*old_off + new_off*new_off)*invscaling;
+            //rd += (-old_off*old_off + new_off*new_off)*invscaling;
+            rd += (-old_off*old_off + new_off*new_off);
             if (rd < 1)
             {
                 off[cut_dim] = new_off;
