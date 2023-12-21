@@ -503,6 +503,25 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         return splitdim;
     }
 
+    inline void KDTree::qsort_adt(int start, int end, int dim)
+    {
+        int ind = (start + end)/2;
+        int i = start;
+        int j = end;
+        Double_t xx = bucket[ind].GetPhase(dim);
+        while(1)
+        {
+            while(bucket[i].GetPhase(dim) < xx) i++;
+            while(bucket[j].GetPhase(dim) > xx) j--;
+
+            if(i >= j) break;
+            swap(bucket[i],bucket[j]);
+            i++;
+            j--;
+        }
+        if(start < i - 1) qsort_adt(start, i-1, dim);
+        if(j +1 < end) qsort_adt(j + 1, end, dim);
+    }
     //-- End of inline functions
 
     //-- Private functions used to build tree

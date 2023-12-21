@@ -556,6 +556,11 @@ namespace NBody
         KDTreeOMPThreadPool OMPInitThreadPool();
         vector<KDTreeOMPThreadPool> OMPSplitThreadPool(KDTreeOMPThreadPool &);
         //@}
+
+        /// \name Performance improvement with Rhee+22
+        //@{
+        inline void qsort_adt(int start, int end, int dim);
+        //@}
     };
 
 }
