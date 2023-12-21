@@ -602,6 +602,106 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         }
     }
 
+    ///Build node with an unbalanced scheme based on Rhee+22
+    Node *KDTree::BuildNodes_ADT(Int_t start, Int_t end, KDTreeOMPThreadPool &otp)
+    {
+        Double_t bnd[6][2];
+        Int_t size = end - start, k;
+        Int_tree_t id = 0;
+        int splitdim;
+        Double_t splitvalue;
+        int ind0 = start;
+        int ind1 = end-1;
+
+
+        //if not building in parallel can set ids here and update number of nodes
+        //otherwise, must set after construction
+        if (ibuildinparallel == false) {
+            id = numnodes;
+            numnodes++;
+        }
+
+        //Leaf Node Construction
+        if (size <= b){
+            if (ibuildinparallel == false) numleafnodes++;
+            for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+
+            LeafNode *lnode;
+            lnode = new LeafNode(id, start, end, bnd, ND);
+            lnode->SetLeaf(1);
+
+            return lnode;
+        }
+        else
+        {
+            bool irearrangeandbalance=true;
+            if (ikeepinputorder) irearrangeandbalance=false;
+
+            splitdim = DetermineSplitDim(start, end, bnd, otp);
+            qsort_adt(ind0, ind1, splitdim);
+
+            double dx=0., dx2;
+            int nn_bucket = (end - start) / 8; // only search between 1/8 to 7/8 to avoid a too much unbalanced tree
+
+            //Split node at the position of a particle with the maximum interparticle distance
+            for(int ind=start + nn_bucket; ind<end - nn_bucket; ind++){
+                dx2 = abs(bucket[ind+1].GetPhase(splitdim) - bucket[ind].GetPhase(splitdim));
+                if(dx2 > dx){dx=dx2; k=ind; splitvalue=bucket[k].GetPhase(splitdim);}
+            }
+        }
+
+        //Now Split the node
+        //run the node construction in parallel
+        if (ibuildinparallel && otp.nactivethreads > 1) {
+            //note that if OpenMP not defined then ibuildinparallel is false
+#ifdef USEOPENMP
+            vector<KDTreeOMPThreadPool> newotp = OMPSplitThreadPool(otp);
+            Node *left, *right;
+
+            #pragma omp parallel default(shared) num_threads(2)
+            #pragma omp single
+            {
+                #pragma omp task
+                left = BuildNodes_ADT(start, k+1, newotp[0]);
+                #pragma omp task
+                right = BuildNodes_ADT(k+1, end, newotp[1]);
+                #pragma omp taskwait
+            }
+
+            //Now save the largest distance from the center of this node
+            //Here, the center is just defined as the mean coordinates of the included particles
+            //TO DO LIST
+            //  Define center by using the 'finding the smallest sphere' algorithm
+            //  (https://en.wikipedia.org/wiki/Smallest-circle_problem)
+
+            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
+            left->SetSibling(right);
+            right->SetSibling(left);
+            left->SetParent(snode);
+            right->SetParent(snode);
+
+            return snode;
+
+#endif
+        }
+        else {
+            Node *left, *right;
+
+            left = BuildNodes_ADT(start, k+1, otp);
+            right = BuildNodes_ADT(k+1, end, otp);
+
+            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
+            
+            left->SetSibling(right);
+            right->SetSibling(left);
+            left->SetParent(snode);
+            right->SetParent(snode);
+
+            return snode;
+           
+        }       
+    }
+
     ///scales the space and calculates the corrected volumes
     ///note here this is not mass weighted which may lead to issues later on.
     void KDTree::ScaleSpace(){
