@@ -526,7 +526,12 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         {
             if (ibuildinparallel == false) numleafnodes++;
             for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
-            return new LeafNode(id ,start, end,  bnd, ND);
+
+	        LeafNode *lnode;
+	        lnode = new LeafNode(id, start, end, bnd, ND);
+	        lnode->SetLeaf(1);
+	        return lnode;
+            //return new LeafNode(id ,start, end,  bnd, ND);
         }
         else
         {
@@ -551,13 +556,29 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                     right = BuildNodes(k+1, end, newotp[1]);
                     #pragma omp taskwait
                 }
-                return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
-                    left, right);
+                //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
+                //    left, right);
+                
+                SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
+		        left->SetSibling(right);
+		        right->SetSibling(left);
+		        left->SetParent(snode);
+		        right->SetParent(snode);
+		        return snode;
 #endif
             }
             else {
-                return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
-                    BuildNodes(start, k+1, otp), BuildNodes(k+1, end, otp));
+                //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
+                //    BuildNodes(start, k+1, otp), BuildNodes(k+1, end, otp));
+                Node *left, *right;
+		        left = BuildNodes(start, k+1, otp);
+		        right = BuildNodes(k+1, end, otp);
+                SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
+		        left->SetSibling(right);
+		        right->SetSibling(left);
+		        left->SetParent(snode);
+		        right->SetParent(snode);
+		        return snode;
             }
         }
     }
@@ -697,7 +718,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
     {
         node->SetID(numnodes++);
         //walk tree increasing
-        if (node->GetCount() <= b) {
+        //if (node->GetCount() <= b) {
+        if(node->GetLeaf() > 0){
             numleafnodes++;
             return;
         }
@@ -723,7 +745,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         cout<<"At node "<<" "<<id<<" "<<start<<" "<<end<<" ";
         for (auto j=0;j<ND;j++)  cout<<"("<<node->GetBoundary(j,0)<<", "<<node->GetBoundary(j,1)<<")";
         cout<<endl;
-        if (node->GetCount() > b) {
+        //if (node->GetCount() > b) {
+        if(node->GetLeaf()<0){
             WalkNode(((SplitNode*)node)->GetLeft());
             WalkNode(((SplitNode*)node)->GetRight());
         }
