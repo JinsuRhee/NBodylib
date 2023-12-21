@@ -524,7 +524,9 @@ namespace NBody
 
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
-        int flag=Head[bucket_start];
+        //int flag=Head[bucket_start];
+        int flag=1;
+
         Double_t maxr0=0.,maxr1=0.;
         for (int j=0;j<numdim;j++){
             maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
@@ -553,11 +555,14 @@ namespace NBody
             Double_t dist2;
             for (Int_t i = bucket_start; i < bucket_end; i++)
             {
-                if (flag!=Head[i])flag=0;
+                //if (flag!=Head[i])flag=0;
                 id=bucket[i].GetID();
                 if (Group[id]) continue;
                 dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
                 if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
+
+				if(Group[id]==0)flag=0;
+
                 if (dist2 < fdist2) {
                     Group[id]=iGroup;
                     Fifo[iTail++]=i;
@@ -572,23 +577,32 @@ namespace NBody
                 }
             }
         }
-        if (flag) BucketFlag[nid]=1;
+
+        if (flag){
+			BucketFlag[nid]=1; // close this node
+			if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;	// if two sibling are closed, close the parent
+		}
     }
     void LeafNode::FOFSearchCriterion(Double_t rd, FOFcompfunc cmp, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
         //if bucket already linked and particle already part of group, do nothing.
-        if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
+        //if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
+        if(BucketFlag[nid])return;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
-        int flag=Head[bucket_start];
+        //int flag=Head[bucket_start];
+        int flag = 1;
         for (Int_t i = bucket_start; i < bucket_end; i++)
         {
-            if (flag!=Head[i])flag=0;
+            //if (flag!=Head[i])flag=0;
             Int_t id=bucket[i].GetID();
             //if already linked don't do anything
-            if (Group[id]==iGroup) continue;
+            //if (Group[id]==iGroup) continue;
+            if (Group[id]) continue;
             //if tag below zero then don't do anything
             if (Group[id]<0) continue;
+
+	    flag =0;
             if (cmp(bucket[target],bucket[i],params)) {
                 Group[id]=iGroup;
                 Fifo[iTail++]=i;
@@ -601,13 +615,15 @@ namespace NBody
                 flag=0;
             }
         }
-        if (flag) BucketFlag[nid]=1;
+        if (flag){
+		BucketFlag[nid]=1;
+		if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;	// if two sibling are closed, close the parent
+	}
     }
     void LeafNode::FOFSearchCriterionSetBasisForLinks(Double_t rd, FOFcompfunc cmp, FOFcheckfunc check, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
         //if bucket already linked and particle already part of group, do nothing.
-        //if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
-        if(BucketFlag[nid])return;
+        if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
         int flag=Head[bucket_start];
@@ -616,7 +632,8 @@ namespace NBody
             if (flag!=Head[i])flag=0;
             Int_t id=bucket[i].GetID();
             //if already linked don't do anything
-            if (Group[id]==iGroup) continue;
+            //if (Group[id]==iGroup) continue;
+            if(Group[id]) continue;
             //if tag below zero then don't do anything
             if (Group[id]<0) continue;
             if (cmp(bucket[target],bucket[i],params)) {
