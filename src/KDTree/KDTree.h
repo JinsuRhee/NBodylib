@@ -103,6 +103,8 @@ namespace NBody
         ///max number of dimensions of tree
         const static int MAXND=6;
 
+        Double_t rdist_adt=-1.; //For adaptive KDTree (Rhee+22)
+
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
         ///but here more appropriate to specify the type of tree that dictates the dimension
@@ -169,7 +171,7 @@ namespace NBody
 
         //Build Unbalanced tree
         Node* BuildNodes_ADT(Int_t start, Int_t end, KDTreeOMPThreadPool&);
-        
+
         //set node ids
         void BuildNodeIDs();
         //recursive setting of ids
@@ -189,6 +191,15 @@ namespace NBody
         //@{
         ///Creates tree from an NBody::Particle array
         KDTree(Particle *p, Int_t numparts,
+            Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
+            int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
+            Double_t *Period=NULL, Double_t **metric=NULL,
+            bool iBuildInParallel = true,
+            bool iKeepInputOrder = false
+        );
+
+        ///Creates unbalanced adaptive tree from an NBody::Particle array (Rhee+22)
+        KDTree(Double_t rdist, Particle *p, Int_t numparts,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
             int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
             Double_t *Period=NULL, Double_t **metric=NULL,

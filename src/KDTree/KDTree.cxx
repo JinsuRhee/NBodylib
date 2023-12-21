@@ -691,7 +691,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             right = BuildNodes_ADT(k+1, end, otp);
 
             SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
-            
+
             left->SetSibling(right);
             right->SetSibling(left);
             left->SetParent(snode);
@@ -913,6 +913,53 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes(0,numparts, otp);
+            if (ibuildinparallel) BuildNodeIDs();
+            //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
+            if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
+        }
+    }
+
+    // For unbalanced tree building (Rhee+22)
+    // rdist is used when building OMP domains to avoid linking across domains
+    KDTree::KDTree(Double_t rdist, Particle *p, Int_t nparts, Int_t bucket_size,
+      int ttype, int smfunctype, int smres,
+      int criterion, int aniso, int scale,
+      Double_t *Period, Double_t **m,
+      bool iBuildInParallel,
+      bool iKeepInputOrder)
+    {
+        iresetorder=true;
+        ikeepinputorder = iKeepInputOrder;
+        OmpNestedEnabler nested_enabler(iBuildInParallel);
+        ibuildinparallel = iBuildInParallel && nested_enabler.available_threads() > 1;
+        numparts = nparts;
+        numleafnodes=numnodes=0;
+        bucket = p;
+        b = bucket_size;
+        treetype = ttype;
+        kernfunctype = smfunctype;
+        kernres = smres;
+        splittingcriterion = criterion;
+        anisotropic=aniso;
+        scalespace = scale;
+        metric = m;
+        rdist_adt = rdist;
+        if (Period!=NULL)
+        {
+            period=new Double_t[3];
+            for (int k=0;k<3;k++) period[k]=Period[k];
+        }
+        else period=NULL;
+        if (TreeTypeCheck()) {
+            KernelConstruction();
+            for (Int_t i = 0; i < numparts; i++) bucket[i].SetID(i);
+            vol=1.0;ivol=1.0;
+            for (int j=0;j<ND;j++) {xvar[j]=1.0;ixvar[j]=1.0;}
+            if (scalespace) ScaleSpace();
+            for (int j=0;j<ND;j++) {vol*=xvar[j];ivol*=ixvar[j];}
+            if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
+            KDTreeOMPThreadPool otp = OMPInitThreadPool();
+            root=BuildNodes_ADT(0,numparts, otp);
             if (ibuildinparallel) BuildNodeIDs();
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
