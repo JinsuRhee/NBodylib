@@ -503,24 +503,40 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         return splitdim;
     }
 
-    inline void KDTree::qsort_adt(int start, int end, int dim)
+    inline void KDTree::qsort_adt(int start, int end, int sdim)
     {
         int ind = (start + end)/2;
         int i = start;
         int j = end;
-        Double_t xx = bucket[ind].GetPhase(dim);
+        Double_t xx = bucket[ind].GetPhase(sdim);
         while(1)
         {
-            while(bucket[i].GetPhase(dim) < xx) i++;
-            while(bucket[j].GetPhase(dim) > xx) j--;
+            while(bucket[i].GetPhase(sdim) < xx) i++;
+            while(bucket[j].GetPhase(sdim) > xx) j--;
 
             if(i >= j) break;
             swap(bucket[i],bucket[j]);
             i++;
             j--;
         }
-        if(start < i - 1) qsort_adt(start, i-1, dim);
-        if(j +1 < end) qsort_adt(j + 1, end, dim);
+        if(start < i - 1) qsort_adt(start, i-1, sdim);
+        if(j +1 < end) qsort_adt(j + 1, end, sdim);
+    }
+
+    inline void KDTree::align_adt(int start, int end, int sdim, Int_t &sind, Double_t &splitvalue)
+    {
+            qsort_adt(start, end-1, sdim);
+
+            double dx=0., dx2;
+            int nn_bucket = (end - start) / 8; // only search between 1/8 to 7/8 to avoid a too much unbalanced tree
+            if(nn_bucket == 0) nn_bucket = 1;
+            
+            //Split node at the position of a particle with the maximum interparticle distance
+            for(int ind=start + nn_bucket; ind<end - nn_bucket; ind++){
+                dx2 = abs(bucket[ind+1].GetPhase(sdim) - bucket[ind].GetPhase(sdim));
+                if(dx2 > dx){dx=dx2; sind=ind; splitvalue=bucket[ind].GetPhase(sdim);}
+            }
+
     }
     //-- End of inline functions
 
@@ -537,6 +553,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         Int_tree_t id = 0;
         //if not building in parallel can set ids here and update number of nodes
         //otherwise, must set after construction
+        
         if (ibuildinparallel == false) {
             id = numnodes;
             numnodes++;
@@ -613,7 +630,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         int ind0 = start;
         int ind1 = end-1;
 
-
+        
         //if not building in parallel can set ids here and update number of nodes
         //otherwise, must set after construction
         if (ibuildinparallel == false) {
@@ -638,16 +655,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             if (ikeepinputorder) irearrangeandbalance=false;
 
             splitdim = DetermineSplitDim(start, end, bnd, otp);
-            qsort_adt(ind0, ind1, splitdim);
-
-            double dx=0., dx2;
-            int nn_bucket = (end - start) / 8; // only search between 1/8 to 7/8 to avoid a too much unbalanced tree
-
-            //Split node at the position of a particle with the maximum interparticle distance
-            for(int ind=start + nn_bucket; ind<end - nn_bucket; ind++){
-                dx2 = abs(bucket[ind+1].GetPhase(splitdim) - bucket[ind].GetPhase(splitdim));
-                if(dx2 > dx){dx=dx2; k=ind; splitvalue=bucket[k].GetPhase(splitdim);}
-            }
+            align_adt(start, end, splitdim, k, splitvalue);
         }
 
         //Now Split the node

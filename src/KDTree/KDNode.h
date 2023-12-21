@@ -55,6 +55,11 @@ namespace NBody
         UInt_tree_t bucket_start;
         UInt_tree_t bucket_end;
         unsigned short numdim;
+
+	/// (Rhee+22) Node closing + skipping
+	Node *parent, *sibling;
+	Int_t isleaf=-1;
+
         public:
         virtual ~Node() {};
 
@@ -70,12 +75,22 @@ namespace NBody
         virtual Int_t GetStart(){return bucket_start;}
         ///Get end index in particle array of particles enclosed by node
         virtual Int_t GetEnd(){return bucket_end;}
+
+	/// (Rhee+22) Node closing + skipping
+	Node *GetParent(){return parent;}
+	Node *GetSibling(){return sibling;}
+	virtual Int_t GetLeaf(){return isleaf;}
         //@}
 
         /// \name Simple Set functions
         //@{
         /// set Id --- use with caution
         virtual void SetID(Int_tree_t id){nid=id;}
+
+	/// (Rhee+22) Node closing + skipping
+	virtual void SetParent(Node* node){parent=node;}
+	virtual void SetSibling(Node *node){sibling=node;}
+	virtual void SetLeaf(Int_t leaftmp){isleaf=leaftmp;}
         //@}
 
         /// \name Find Nearest routines:
@@ -241,6 +256,9 @@ namespace NBody
         Double_t cut_val;
         Node *left;
         Node *right;
+	/// (Rhee+22) Node closing + skipping
+	Node *parent;
+	Node *sibling;
         public:
         SplitNode(Int_t id, int d, Double_t p, Int_t Count, Double_t bnd[6][2],
             Int_t new_bucket_start, Int_t new_bucket_end, unsigned short ndim,
@@ -254,6 +272,8 @@ namespace NBody
             bucket_end = new_bucket_end;
             left = initial_left;
             right = initial_right;
+	    parent = NULL;
+	    sibling = NULL;
             numdim=ndim;
             for (int j=0;j<numdim;j++) {xbnd[j][0]=bnd[j][0];xbnd[j][1]=bnd[j][1];}
         }
@@ -269,9 +289,19 @@ namespace NBody
         Node *GetLeft(){return left;}
         ///get the child node to the right of the cut value
         Node *GetRight(){return right;}
+	/// (Rhee+22) Node closing + skipping
+	Node *GetParent(){return parent;}
+	Node *GetSibling(){return sibling;}
         //@}
 
-        //implementations of Find functions
+
+        /// \name Simple Set functions for Rhee+22
+        //@{
+        virtual void SetParent(Node* node){parent=node;}
+        virtual void SetSibling(Node *node){sibling=node;}
+        //@}
+        
+	//implementations of Find functions
         void FindNearestPos(Double_t rd, Particle *bucket, PriorityQueue *pq, Double_t* off, Int_t t, int dim=3);
         void FindNearestVel(Double_t rd, Particle *bucket, PriorityQueue *pq, Double_t* off, Int_t t, int dim=3);
         void FindNearestPhase(Double_t rd, Particle *bucket, PriorityQueue *pq, Double_t* off, Int_t t);
@@ -386,9 +416,24 @@ namespace NBody
             bucket_end = new_bucket_end;
             count=bucket_end-bucket_start;
             numdim=ndim;
+	    /// (Rhee+22) Node closing + skipping
+	    parent=NULL;
+	    sibling=NULL;
             for (int j=0;j<numdim;j++) {xbnd[j][0]=bnd[j][0];xbnd[j][1]=bnd[j][1];}
         }
         ~LeafNode() { }
+
+        /// \name Simple Get functions for Rhee+22
+        //@{
+        Node *GetParent(){return parent;}
+        Node *GetSibling(){return sibling;}
+        //@}
+
+        /// \name Simple Set functions for Rhee+22
+        //@{
+        virtual void SetParent(Node* node){parent=node;}
+        virtual void SetSibling(Node *node){sibling=node;}
+        //@}
 
         //implementations of Find functions
         void FindNearestPos(Double_t rd, Particle *bucket, PriorityQueue *pq, Double_t* off, Int_t t, int dim=3);

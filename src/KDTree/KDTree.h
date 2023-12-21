@@ -575,6 +575,7 @@ namespace NBody
         /// \name Performance improvement with Rhee+22
         //@{
         inline void qsort_adt(int start, int end, int dim);
+        inline void align_adt(int start, int end, int dim, Int_t &k, Double_t &splitvalue);
         //@}
     };
 
