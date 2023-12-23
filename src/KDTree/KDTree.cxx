@@ -677,9 +677,6 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                     if(max_dx > 2.0*rdist_adt){ompleafflag=-1; splitdim=dimvar; break;}
                 }
 
-cout<<"%123123 -- "<<start<<" / "<<end<<" / "<<k<<" / "<<splitdim<<" / "<<splitvalue<<" / "<<max_dx<<" / "<<endl;
-cout<<"         "<<ompleafflag<<" / "<<size<<" / "<<b<<" / "<<nmindomain<<endl;
-
                 if(ompleafflag>0){
                     if (ibuildinparallel == false) numleafnodes++;
                     for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
