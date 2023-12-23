@@ -527,53 +527,112 @@ namespace NBody
         //int flag=Head[bucket_start];
         int flag=1;
 
-        Double_t maxr0=0.,maxr1=0.;
-        for (int j=0;j<numdim;j++){
-            maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
-            maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]);
-        }
-        //first check to see if entire node lies wihtin search distance
-        if (maxr0<fdist2&&maxr1<fdist2){
-            Int_t id;
-            for (Int_t i = bucket_start; i < bucket_end; i++){
-                id=bucket[i].GetID();
-                if (Group[id]) continue;
-                Group[id]=iGroup;
-                Fifo[iTail++]=i;
-                Len[iGroup]++;
-
-                Next[Tail[Head[target]]]=Head[i];
-                Tail[Head[target]]=Tail[Head[i]];
-                Head[i]=Head[target];
-
-                if(iTail==nActive)iTail=0;
+        if(adt_farthest<0){ // old ver
+            Double_t maxr0=0.,maxr1=0.;
+            for (int j=0;j<numdim;j++){
+                maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
+                maxr1+=(bucket[target].GetPhase(j)-xbnd[j][1])*(bucket[target].GetPhase(j)-xbnd[j][1]);
             }
-        }
-        //otherwise check each particle individually
-        else {
-            Int_t id;
-            Double_t dist2;
-            for (Int_t i = bucket_start; i < bucket_end; i++)
-            {
-                //if (flag!=Head[i])flag=0;
-                id=bucket[i].GetID();
-                if (Group[id]) continue;
-                dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
-                if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
-
-				if(Group[id]==0)flag=0;
-
-                if (dist2 < fdist2) {
+            //first check to see if entire node lies wihtin search distance
+            if (maxr0<fdist2&&maxr1<fdist2){
+                Int_t id;
+                for (Int_t i = bucket_start; i < bucket_end; i++){
+                    id=bucket[i].GetID();
+                    if (Group[id]) continue;
                     Group[id]=iGroup;
                     Fifo[iTail++]=i;
                     Len[iGroup]++;
-
+    
                     Next[Tail[Head[target]]]=Head[i];
                     Tail[Head[target]]=Tail[Head[i]];
                     Head[i]=Head[target];
-
+    
                     if(iTail==nActive)iTail=0;
-                    flag=0;
+                }
+            }
+            //otherwise check each particle individually
+            else {
+                Int_t id;
+                Double_t dist2;
+                for (Int_t i = bucket_start; i < bucket_end; i++)
+                {
+                    //if (flag!=Head[i])flag=0;
+                    id=bucket[i].GetID();
+                    if (Group[id]) continue;
+                    dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
+                    if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
+    
+    				if(Group[id]==0)flag=0;
+    
+                    if (dist2 < fdist2) {
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+    
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+    
+                        if(iTail==nActive)iTail=0;
+                        flag=0;
+                    }
+                }
+            }
+        }
+        else{
+            Double_t adt_pos[6], adt_dist, adt_rr;
+
+            for(int i=0; i<numdim; i++) adt_pos[i] = bucket[target].GetPhase(i);
+            adt_dist = DistanceSqd(adt_pos, adt_center, numdim);
+            adt_rr = adt_farthest;
+
+            if(sqrt(adt_dist) >= sqrt(adt_rr) + sqrt(fdist2)){
+                flag=0;
+            }
+            else if(sqrt(adt_dist) <= abs(sqrt(adt_rr) - sqrt(fdist2)) && fdist2 > adt_rr){
+                //The the entire node lies within search distance
+                Int_t id;
+                for (Int_t i = bucket_start; i < bucket_end; i++){
+                        id=bucket[i].GetID();
+                        if (Group[id]) continue;
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+
+                        if(iTail==nActive)iTail=0;
+                }
+            }
+            else{
+                Int_t id;
+                Double_t dist2;
+                for (Int_t i = bucket_start; i < bucket_end; i++)
+                {
+                    //if (flag!=Head[i])flag=0;
+                    id=bucket[i].GetID();
+                    if (Group[id]) continue;
+                    dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
+                    if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
+
+                    //if (flag!=Head[i])flag=0;
+                    //flag=0;
+                    //if(Group[id]==0)flag=0;
+
+                    if (dist2 < fdist2) {
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+
+                        if(iTail==nActive)iTail=0;
+                        flag=0;
+                    }
                 }
             }
         }
@@ -592,33 +651,98 @@ namespace NBody
         //then BucketFlag[nid]=1
         //int flag=Head[bucket_start];
         int flag = 1;
-        for (Int_t i = bucket_start; i < bucket_end; i++)
-        {
-            //if (flag!=Head[i])flag=0;
-            Int_t id=bucket[i].GetID();
-            //if already linked don't do anything
-            //if (Group[id]==iGroup) continue;
-            if (Group[id]) continue;
-            //if tag below zero then don't do anything
-            if (Group[id]<0) continue;
 
-	    flag =0;
-            if (cmp(bucket[target],bucket[i],params)) {
-                Group[id]=iGroup;
-                Fifo[iTail++]=i;
-                Len[iGroup]++;
 
-                Next[Tail[Head[target]]]=Head[i];
-                Tail[Head[target]]=Tail[Head[i]];
-                Head[i]=Head[target];
-                if(iTail==nActive)iTail=0;
-                flag=0;
+        if(adt_farthest<0){ // old ver    
+            for (Int_t i = bucket_start; i < bucket_end; i++)
+            {
+                //if (flag!=Head[i])flag=0;
+                Int_t id=bucket[i].GetID();
+                //if already linked don't do anything
+                //if (Group[id]==iGroup) continue;
+                if (Group[id]) continue;
+                //if tag below zero then don't do anything
+                if (Group[id]<0) continue;
+    
+    	        flag =0;
+                if (cmp(bucket[target],bucket[i],params)) {
+                    Group[id]=iGroup;
+                    Fifo[iTail++]=i;
+                    Len[iGroup]++;
+    
+                    Next[Tail[Head[target]]]=Head[i];
+                    Tail[Head[target]]=Tail[Head[i]];
+                    Head[i]=Head[target];
+                    if(iTail==nActive)iTail=0;
+                    flag=0;
+                }
             }
         }
+        else{
+
+            Double_t adt_pos[3], adt_vel[3], adt_dist=0., adt_rr;
+            Double_t adt_posCen[3], adt_velCen[3];
+            for(int i=0; i<3; i++) {adt_pos[i] = bucket[target].GetPosition(i); adt_posCen[i] = adt_center[i];}
+            if(numdim==6) for(int i=3; i<6; i++) {adt_vel[i-3] = bucket[target].GetVelocity(i-3); adt_velCen[i-3] = adt_center[i];}
+
+            adt_dist += DistanceSqd(adt_pos, adt_posCen, 3)/params[1];
+            if(numdim==6) adt_dist += DistanceSqd(adt_vel, adt_velCen, 3)/params[2];
+            adt_rr = adt_farthest;
+
+            if(sqrt(adt_dist) >= sqrt(adt_rr) + 1.0){
+                flag=0;
+            }
+            else if(sqrt(adt_dist) <= abs(sqrt(adt_rr) - 1.0) && 1.0 > adt_rr){
+                for(Int_t i=bucket_start; i < bucket_end; i++){
+                        Int_t id = bucket[i].GetID();
+                        //if(Group[id]==iGroup) continue;
+                        if(Group[id]<0) continue;
+                        if(Group[id]) continue;
+
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+                        if(iTail==nActive)iTail=0;
+                }
+            }
+            else{
+                for (Int_t i = bucket_start; i < bucket_end; i++)
+                {
+                    //if (flag!=Head[i])flag=0;
+                    Int_t id=bucket[i].GetID();
+                    //if already linked don't do anything
+                    //if (Group[id]==iGroup) continue;
+                    if (Group[id]) continue;
+                    //if tag below zero then don't do anything
+                    if (Group[id]<0) continue;
+
+                    //if (flag!=Head[i])flag=0;
+                    //flag=0;
+
+                    if (cmp(bucket[target],bucket[i],params)) {
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+                        if(iTail==nActive)iTail=0;
+                        flag=0;
+                    }
+                }
+        }
+        }
+
+
         if (flag){
-		BucketFlag[nid]=1;
-		if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;	// if two sibling are closed, close the parent
-	}
+		    BucketFlag[nid]=1;
+		    if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;	// if two sibling are closed, close the parent
+	    }
     }
     void LeafNode::FOFSearchCriterionSetBasisForLinks(Double_t rd, FOFcompfunc cmp, FOFcheckfunc check, Double_t *params, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
