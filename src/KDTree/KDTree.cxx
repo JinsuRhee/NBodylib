@@ -667,14 +667,14 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         //  1) size < = b
         //  2) can be further divided if there is a particle with interparticle distiance > 2.0*linking length
         //      , to avoid linking across domains
-        if (rdist_adt>0){
+        if (adt_treetype==0){
             if(size <= b){
 
                 ompleafflag = 1;
                 for(int dimvar=0; dimvar<ND; dimvar++){
                     max_dx = 0.;
                     align_adt(start, end, dimvar, k, splitvalue, max_dx);
-                    if(max_dx > 2.0*rdist_adt){ompleafflag=-1; splitdim=dimvar; break;}
+                    if(max_dx > 2.0*adt_rdist){ompleafflag=-1; splitdim=dimvar; break;}
                 }
 
                 if(ompleafflag>0){
@@ -686,7 +686,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                     return lnode;
                 }
                 else{
-                    if(size>nmindomain){
+                    if(size>adt_nmindom){
                         
 
                     }
@@ -763,8 +763,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            //setcord_adt(left, start, k+1);
-            //setcord_adt(right, k+1, end);
+            setcord_adt(left, start, k+1);
+            setcord_adt(right, k+1, end);
             return snode;
 
 #endif
@@ -782,8 +782,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            //setcord_adt(left, start, k+1);
-            //setcord_adt(right, k+1, end);
+            setcord_adt(left, start, k+1);
+            setcord_adt(right, k+1, end);
 
             return snode;
            
@@ -1009,7 +1009,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 
     // For unbalanced tree building (Rhee+22)
     // rdist is used when building OMP domains to avoid linking across domains
-    KDTree::KDTree(Double_t rdist, Int_t nmindom, Particle *p, Int_t nparts, Int_t bucket_size,
+    KDTree::KDTree(Double_t *dp_params, Int_t *ip_params, Particle *p, Int_t nparts, Int_t bucket_size,
       int ttype, int smfunctype, int smres,
       int criterion, int aniso, int scale,
       Double_t *Period, Double_t **m,
@@ -1031,8 +1031,10 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         anisotropic=aniso;
         scalespace = scale;
         metric = m;
-        rdist_adt = rdist;
-        nmindomain = nmindom;
+
+        adt_rdist = dp_params[0];
+        adt_nmindom = ip_params[1];
+        adt_treetype= ip_params[0];
 
         if (Period!=NULL)
         {
