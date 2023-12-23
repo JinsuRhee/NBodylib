@@ -107,6 +107,7 @@ namespace NBody
         Int_t adt_nmindom=100;
         Int_t adt_treetype=0; //(0 for omp // 1 for normal search // 2 for crit search)
         Double_t adt_sx, adt_sv;
+        Int_t adt_nodeskip=-1;
 
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n

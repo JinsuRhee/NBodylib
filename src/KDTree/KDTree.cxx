@@ -792,8 +792,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
-            setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
+            if(adt_nodeskip>0) setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
+            if(adt_nodeskip>0) setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
             return snode;
 
 #endif
@@ -811,8 +811,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
-            setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
+            if(adt_nodeskip>0) setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
+            if(adt_nodeskip>0) setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
 
             return snode;
            
@@ -1066,6 +1066,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         adt_sv = sqrt(dp_params[2]);
         adt_nmindom = ip_params[1];
         adt_treetype= ip_params[0];
+        adt_nodeskip= ip_params[1];
 
         if (Period!=NULL)
         {
