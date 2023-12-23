@@ -104,6 +104,7 @@ namespace NBody
         const static int MAXND=6;
 
         Double_t rdist_adt=-1.; //For adaptive KDTree (Rhee+22)
+        Int_t nmindomain=100;
 
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
@@ -199,7 +200,7 @@ namespace NBody
         );
 
         ///Creates unbalanced adaptive tree from an NBody::Particle array (Rhee+22)
-        KDTree(Double_t rdist, Particle *p, Int_t numparts,
+        KDTree(Double_t rdist, Int_t nmindomain, Particle *p, Int_t numparts,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
             int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
             Double_t *Period=NULL, Double_t **metric=NULL,
@@ -575,7 +576,8 @@ namespace NBody
         /// \name Performance improvement with Rhee+22
         //@{
         inline void qsort_adt(int start, int end, int dim);
-        inline void align_adt(int start, int end, int dim, Int_t &k, Double_t &splitvalue);
+        inline void align_adt(int start, int end, int dim, Int_t &k, Double_t &splitvalue, double &max_dx);
+        inline void setcord_adt(Node* adt_node, int i0, int i1);
         //@}
     };
 

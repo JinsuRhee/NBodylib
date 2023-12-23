@@ -523,7 +523,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         if(j +1 < end) qsort_adt(j + 1, end, sdim);
     }
 
-    inline void KDTree::align_adt(int start, int end, int sdim, Int_t &sind, Double_t &splitvalue)
+    inline void KDTree::align_adt(int start, int end, int sdim, Int_t &sind, Double_t &splitvalue, double &max_dx)
     {
             qsort_adt(start, end-1, sdim);
 
@@ -537,6 +537,27 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 if(dx2 > dx){dx=dx2; sind=ind; splitvalue=bucket[ind].GetPhase(sdim);}
             }
 
+            max_dx = dx;
+
+    }
+    inline void KDTree::setcord_adt(Node* adt_node, int i0, int i1){
+        Double_t adt_center[ND], adt_centertmp, adt_pos[ND];
+        Double_t adt_dd=-1., adt_dd2;
+
+        for(int i=0; i<ND; i++){
+            adt_centertmp = 0.;
+            for (int j=i0; j<i1; j++) adt_centertmp += bucket[j].GetPhase(i);
+            adt_center[i] = adt_centertmp / (Double_t (i1 - i0));
+            adt_node->SetCenter(adt_center[i], i);
+        }
+
+        for(int i=i0; i<i1; i++){
+            for(int j=0; j<ND; j++) adt_pos[j] = bucket[i].GetPhase(j);
+            adt_dd2 = DistanceSqd(adt_pos, adt_center, ND);
+            if(adt_dd2>adt_dd) adt_dd = adt_dd2;
+        }
+
+        adt_node->SetFarthest(adt_dd);
     }
     //-- End of inline functions
 
@@ -629,6 +650,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         Double_t splitvalue;
         int ind0 = start;
         int ind1 = end-1;
+        int ompleafflag = -1;
+        double max_dx;
 
         
         //if not building in parallel can set ids here and update number of nodes
@@ -638,26 +661,81 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             numnodes++;
         }
 
-        //Leaf Node Construction
-        if (size <= b){
-            if (ibuildinparallel == false) numleafnodes++;
-            for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+        // Node Construction for OMP decomposition
+        //
+        // check whether this node becomes a leaf with the following conditions
+        //  1) size < = b
+        //  2) can be further divided if there is a particle with interparticle distiance > 2.0*linking length
+        //      , to avoid linking across domains
+        if (rdist_adt>0){
+            if(size <= b){
 
-            LeafNode *lnode;
-            lnode = new LeafNode(id, start, end, bnd, ND);
-            lnode->SetLeaf(1);
+                ompleafflag = 1;
+                for(int dimvar=0; dimvar<ND; dimvar++){
+                    max_dx = 0.;
+                    align_adt(start, end, dimvar, k, splitvalue, max_dx);
+                    if(max_dx > 2.0*rdist_adt){ompleafflag=-1; splitdim=dimvar; break;}
+                }
 
-            return lnode;
+cout<<"%123123 -- "<<start<<" / "<<end<<" / "<<k<<" / "<<splitdim<<" / "<<splitvalue<<" / "<<max_dx<<" / "<<endl;
+cout<<"         "<<ompleafflag<<" / "<<size<<" / "<<b<<" / "<<nmindomain<<endl;
+
+                if(ompleafflag>0){
+                    if (ibuildinparallel == false) numleafnodes++;
+                    for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+                    LeafNode *lnode;
+                    lnode = new LeafNode(id, start, end, bnd, ND);
+                    lnode->SetLeaf(1);
+                    return lnode;
+                }
+                else{
+                    if(size>nmindomain){
+                        
+
+                    }
+                    else{
+                        if (ibuildinparallel == false) numleafnodes++;
+                        for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+                        LeafNode *lnode;
+                        lnode = new LeafNode(id, start, end, bnd, ND);
+                        lnode->SetLeaf(1);
+                        return lnode;
+                    }
+                }
+                
+            }
+            else{
+                bool irearrangeandbalance=true;
+                if (ikeepinputorder) irearrangeandbalance=false;
+                splitdim = DetermineSplitDim(start, end, bnd, otp);
+                align_adt(start, end, splitdim, k, splitvalue, max_dx);
+
+            }
         }
-        else
-        {
-            bool irearrangeandbalance=true;
-            if (ikeepinputorder) irearrangeandbalance=false;
+        else{
+        // Node Constructurion for search nodes
+            if (size <= b){
+                if (ibuildinparallel == false) numleafnodes++;
+                for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
 
-            splitdim = DetermineSplitDim(start, end, bnd, otp);
-            align_adt(start, end, splitdim, k, splitvalue);
+                LeafNode *lnode;
+                lnode = new LeafNode(id, start, end, bnd, ND);
+                lnode->SetLeaf(1);
+
+                return lnode;
+            }
+            else
+            {
+              bool irearrangeandbalance=true;
+              if (ikeepinputorder) irearrangeandbalance=false;
+              double max_dx;
+              splitdim = DetermineSplitDim(start, end, bnd, otp);
+              align_adt(start, end, splitdim, k, splitvalue, max_dx);
+            }
         }
 
+
+        
         //Now Split the node
         //run the node construction in parallel
         if (ibuildinparallel && otp.nactivethreads > 1) {
@@ -688,6 +766,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
+            //setcord_adt(left, start, k+1);
+            //setcord_adt(right, k+1, end);
             return snode;
 
 #endif
@@ -704,6 +784,9 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             right->SetSibling(left);
             left->SetParent(snode);
             right->SetParent(snode);
+
+            //setcord_adt(left, start, k+1);
+            //setcord_adt(right, k+1, end);
 
             return snode;
            
@@ -929,7 +1012,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 
     // For unbalanced tree building (Rhee+22)
     // rdist is used when building OMP domains to avoid linking across domains
-    KDTree::KDTree(Double_t rdist, Particle *p, Int_t nparts, Int_t bucket_size,
+    KDTree::KDTree(Double_t rdist, Int_t nmindom, Particle *p, Int_t nparts, Int_t bucket_size,
       int ttype, int smfunctype, int smres,
       int criterion, int aniso, int scale,
       Double_t *Period, Double_t **m,
@@ -952,6 +1035,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         scalespace = scale;
         metric = m;
         rdist_adt = rdist;
+        nmindomain = nmindom;
+
         if (Period!=NULL)
         {
             period=new Double_t[3];
