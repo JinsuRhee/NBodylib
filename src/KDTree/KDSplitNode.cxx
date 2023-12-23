@@ -867,30 +867,91 @@ namespace NBody
 	    if(BucketFlag[nid]) return;
 	    int flag=1;
 
-	    flag=0;
-        Double_t old_off = off[cut_dim];
-        Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
-        if (new_off < 0)
-        {
-            left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-            rd += -old_off*old_off + new_off*new_off;
-            if (rd < fdist2)
+        if(adt_farthest<0){//oldver
+            flag = 0;
+            Double_t old_off = off[cut_dim];
+            Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+            if (new_off < 0)
             {
-                off[cut_dim] = new_off;
+                left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                rd += -old_off*old_off + new_off*new_off;
+                if (rd < fdist2)
+                {
+                    off[cut_dim] = new_off;
+                    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    off[cut_dim] = old_off;
+                }
+            }
+            else
+            {
                 right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                off[cut_dim] = old_off;
+                rd += -old_off*old_off + new_off*new_off;
+                if (rd < fdist2)
+                {
+                    off[cut_dim] = new_off;
+                    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    off[cut_dim] = old_off;
+                }
             }
         }
-        else
-        {
-            right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-            rd += -old_off*old_off + new_off*new_off;
-            if (rd < fdist2)
-            {
-                off[cut_dim] = new_off;
-                left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                off[cut_dim] = old_off;
+        else{
+            Double_t adt_pos[6], adt_dist, adt_rr;
+            for(int adt_j=0; adt_j<numdim; adt_j++) adt_pos[adt_j] = bucket[target].GetPhase(adt_j);
+            adt_dist = DistanceSqd(adt_pos, adt_center, numdim);
+            adt_rr = adt_farthest;
+
+            if (sqrt(adt_dist) >= sqrt(adt_rr) + sqrt(fdist2)){
+                //SKIP This Node
+                flag=0;
             }
+            else if (sqrt(adt_dist) <= abs(sqrt(adt_rr) - sqrt(fdist2)) && fdist2 > adt_rr){
+                //This node is entirely enclosed
+                Int_t id;
+
+                for (Int_t i = bucket_start; i < bucket_end; i++){
+                    id=bucket[i].GetID();
+                    if (Group[id]) continue;
+                    Group[id]=iGroup;
+                    Fifo[iTail++]=i;
+                    Len[iGroup]++;
+
+                    Next[Tail[Head[target]]]=Head[i];
+                    Tail[Head[target]]=Tail[Head[i]];
+                    Head[i]=Head[target];
+
+                    if(iTail==nActive)iTail=0;
+                }
+            }
+            else{
+                flag = 0;
+
+                Double_t old_off = off[cut_dim];
+                Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+                if (new_off < 0)
+                {
+                    left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    rd += -old_off*old_off + new_off*new_off;
+                    if (rd < fdist2)
+                    {
+                        off[cut_dim] = new_off;
+                        right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                        off[cut_dim] = old_off;
+                    }
+                }
+                else
+                {
+                    right->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    rd += -old_off*old_off + new_off*new_off;
+                    if (rd < fdist2)
+                    {
+                        off[cut_dim] = new_off;
+                        left->FOFSearchBall(rd,fdist2,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                        off[cut_dim] = old_off;
+                    }
+                }
+                if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
+            }
+
         }
 
         //(Rhee+22) If two sons are closed, close this node
@@ -911,42 +972,114 @@ namespace NBody
 
 	    int flag=1;
 
-	    flag=0;
+	    if(adt_farthest<0){
+            flag = 0;
 
-        Double_t old_off = off[cut_dim];
-        Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
-        //types of trees
-        const int TPHYS=0,TPROJ=1,TVEL=2,TPHS=3,TMETRIC=4;
-        double invscaling;
-        if ((int)params[0]==TPHYS) invscaling = 1.0/params[1];
-        else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
-        else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
-        else invscaling=1.0;
-
-	    new_off *= sqrt(invscaling);
-
-        if (new_off < 0)
-        {
-            left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-            //rd += (-old_off*old_off + new_off*new_off)*invscaling;
-            rd += (-old_off*old_off + new_off*new_off);
-            if (rd < 1)
+            Double_t old_off = off[cut_dim];
+            Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+            //types of trees
+            const int TPHYS=0,TPROJ=1,TVEL=2,TPHS=3,TMETRIC=4;
+            double invscaling;
+            if ((int)params[0]==TPHYS) invscaling = 1.0/params[1];
+            else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
+            else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
+            else invscaling=1.0;
+    
+    	    new_off *= sqrt(invscaling);
+    
+            if (new_off < 0)
             {
-                off[cut_dim] = new_off;
+                left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                //rd += (-old_off*old_off + new_off*new_off)*invscaling;
+                rd += (-old_off*old_off + new_off*new_off);
+                if (rd < 1)
+                {
+                    off[cut_dim] = new_off;
+                    right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    off[cut_dim] = old_off;
+                }
+            }
+            else
+            {
                 right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                off[cut_dim] = old_off;
+                //rd += (-old_off*old_off + new_off*new_off)*invscaling;
+                rd += (-old_off*old_off + new_off*new_off);
+                if (rd < 1)
+                {
+                    off[cut_dim] = new_off;
+                    left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    off[cut_dim] = old_off;
+                }
             }
         }
-        else
-        {
-            right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-            //rd += (-old_off*old_off + new_off*new_off)*invscaling;
-            rd += (-old_off*old_off + new_off*new_off);
-            if (rd < 1)
-            {
-                off[cut_dim] = new_off;
-                left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                off[cut_dim] = old_off;
+        else{
+
+            Double_t adt_pos[3], adt_vel[3], adt_dist=0., adt_rr;
+            Double_t adt_posCen[3], adt_velCen[3];
+            for(int adt_j=0; adt_j<3; adt_j++) {adt_pos[adt_j] = bucket[target].GetPosition(adt_j); adt_posCen[adt_j] = adt_center[adt_j];}
+            if(numdim==6) for(int adt_j=3; adt_j<6; adt_j++) {adt_vel[adt_j-3] = bucket[target].GetVelocity(adt_j-3); adt_velCen[adt_j-3] = adt_center[adt_j];}
+            adt_dist += DistanceSqd(adt_pos, adt_posCen, 3)/params[1];
+            if(numdim==6) adt_dist += DistanceSqd(adt_vel, adt_velCen, 3)/params[2];
+            adt_rr = adt_farthest;
+
+            if(sqrt(adt_dist) >= sqrt(adt_rr) + 1.0){
+                    flag=0;
+            }
+            else if(sqrt(adt_dist) <= abs(sqrt(adt_rr) - 1.0) && 1.0 > adt_rr){
+                for(Int_t i=bucket_start; i < bucket_end; i++){
+                        Int_t id = bucket[i].GetID();
+                        //if(Group[id]==iGroup) continue;       // Skip already linked
+                        if(Group[id]) continue; // Skip already linked
+                        if(Group[id]<0) continue;       // Skip Background
+                        Group[id]=iGroup;
+                        Fifo[iTail++]=i;
+                        Len[iGroup]++;
+
+                        Next[Tail[Head[target]]]=Head[i];
+                        Tail[Head[target]]=Tail[Head[i]];
+                        Head[i]=Head[target];
+                        if(iTail==nActive)iTail=0;
+                }
+            }
+            else{
+                flag = 0;
+
+                Double_t old_off = off[cut_dim];
+                Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+                //types of trees
+                const int TPHYS=0,TPROJ=1,TVEL=2,TPHS=3,TMETRIC=4;
+                double invscaling;
+                if ((int)params[0]==TPHYS) invscaling = 1.0/params[1];
+                else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
+                else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
+                else invscaling=1.0;
+    
+                new_off *= sqrt(invscaling);
+    
+                if (new_off < 0)
+                {
+                    left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    //rd += (-old_off*old_off + new_off*new_off)*invscaling;
+                    rd += (-old_off*old_off + new_off*new_off);
+                    if (rd < 1)
+                    {
+                        off[cut_dim] = new_off;
+                        right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                        off[cut_dim] = old_off;
+                    }
+                }
+                else
+                {
+                    right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                    //rd += (-old_off*old_off + new_off*new_off)*invscaling;
+                    rd += (-old_off*old_off + new_off*new_off);
+                    if (rd < 1)
+                    {
+                        off[cut_dim] = new_off;
+                        left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+                        off[cut_dim] = old_off;
+                    }
+                }
             }
         }
 
