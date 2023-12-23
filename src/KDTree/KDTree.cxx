@@ -540,21 +540,39 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             max_dx = dx;
 
     }
-    inline void KDTree::setcord_adt(Node* adt_node, int i0, int i1){
-        Double_t adt_center[ND], adt_centertmp, adt_pos[ND];
+    inline void KDTree::setcord_adt(Node* adt_node, int i0, int i1, int ttype, Double_t adt_sx, Double_t adt_sv){
+        Double_t adt_center[ND], adt_centertmp, adt_cenx[3], adt_cenv[3];
+        Double_t adt_pos[ND], adt_vel[ND];
         Double_t adt_dd=-1., adt_dd2;
 
         for(int i=0; i<ND; i++){
             adt_centertmp = 0.;
             for (int j=i0; j<i1; j++) adt_centertmp += bucket[j].GetPhase(i);
             adt_center[i] = adt_centertmp / (Double_t (i1 - i0));
+
+            if(ttype==2){
+                adt_cenx[i] = adt_center[i];
+                if(i>=3) adt_cenv[i-3] = adt_center[i];
+            }
+
             adt_node->SetCenter(adt_center[i], i);
         }
 
-        for(int i=i0; i<i1; i++){
-            for(int j=0; j<ND; j++) adt_pos[j] = bucket[i].GetPhase(j);
-            adt_dd2 = DistanceSqd(adt_pos, adt_center, ND);
-            if(adt_dd2>adt_dd) adt_dd = adt_dd2;
+        if(ttype!=2){
+            for(int i=i0; i<i1; i++){
+                for(int j=0; j<ND; j++) adt_pos[j] = bucket[i].GetPhase(j);
+                adt_dd2 = DistanceSqd(adt_pos, adt_center, ND);
+                if(adt_dd2>adt_dd) adt_dd = adt_dd2;
+            }
+        }
+        else{
+            for(int i=i0; i<i1; i++){
+                for(int j=0; j<3; j++) adt_pos[j] = bucket[i].GetPosition(j);
+                if(ND==6) for(int j=0; j<3; j++) adt_vel[j] = bucket[i].GetVelocity(j);
+
+                adt_dd2 = DistanceSqd(adt_pos, adt_cenx, 3) / (adt_sx*adt_sx);
+                if(ND==6) adt_dd2 += DistanceSqd(adt_vel, adt_cenv, 3) / (adt_sv*adt_sv);
+            }
         }
 
         adt_node->SetFarthest(adt_dd);
@@ -652,6 +670,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         int ind1 = end-1;
         int ompleafflag = -1;
         double max_dx;
+        double sx = adt_sx;
+        double sv = adt_sv;
 
         
         //if not building in parallel can set ids here and update number of nodes
@@ -723,11 +743,20 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             }
             else
             {
-              bool irearrangeandbalance=true;
-              if (ikeepinputorder) irearrangeandbalance=false;
-              double max_dx;
-              splitdim = DetermineSplitDim(start, end, bnd, otp);
-              align_adt(start, end, splitdim, k, splitvalue, max_dx);
+                bool irearrangeandbalance=true;
+                if (ikeepinputorder) irearrangeandbalance=false;
+                if(adt_treetype==2){
+                    sx = 1./sx;
+                    sv = 1./sv;
+                    for(int i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
+                }
+                splitdim = DetermineSplitDim(start, end, bnd, otp);
+                if(adt_treetype==2){
+                    sx = 1./sx;
+                    sv = 1./sv;
+                    for(int i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
+                }
+                align_adt(start, end, splitdim, k, splitvalue, max_dx);
             }
         }
 
@@ -763,8 +792,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            setcord_adt(left, start, k+1);
-            setcord_adt(right, k+1, end);
+            setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
+            setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
             return snode;
 
 #endif
@@ -782,8 +811,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left->SetParent(snode);
             right->SetParent(snode);
 
-            setcord_adt(left, start, k+1);
-            setcord_adt(right, k+1, end);
+            setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
+            setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
 
             return snode;
            
@@ -1033,6 +1062,8 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         metric = m;
 
         adt_rdist = dp_params[0];
+        adt_sx = sqrt(dp_params[1]);
+        adt_sv = sqrt(dp_params[2]);
         adt_nmindom = ip_params[1];
         adt_treetype= ip_params[0];
 

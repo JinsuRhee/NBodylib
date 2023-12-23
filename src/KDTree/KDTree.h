@@ -103,8 +103,10 @@ namespace NBody
         ///max number of dimensions of tree
         const static int MAXND=6;
 
-        Double_t rdist_adt=-1.; //For adaptive KDTree (Rhee+22)
-        Int_t nmindomain=100;
+        Double_t adt_rdist=0.; //For adaptive KDTree (Rhee+22)
+        Int_t adt_nmindom=100;
+        Int_t adt_treetype=0; //(0 for omp // 1 for normal search // 2 for crit search)
+        Double_t adt_sx, adt_sv;
 
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
@@ -200,7 +202,7 @@ namespace NBody
         );
 
         ///Creates unbalanced adaptive tree from an NBody::Particle array (Rhee+22)
-        KDTree(Double_t rdist, Int_t nmindomain, Particle *p, Int_t numparts,
+        KDTree(Double_t *dp_params, Int_t *ip_params, Particle *p, Int_t numparts,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
             int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
             Double_t *Period=NULL, Double_t **metric=NULL,
@@ -577,7 +579,7 @@ namespace NBody
         //@{
         inline void qsort_adt(int start, int end, int dim);
         inline void align_adt(int start, int end, int dim, Int_t &k, Double_t &splitvalue, double &max_dx);
-        inline void setcord_adt(Node* adt_node, int i0, int i1);
+        inline void setcord_adt(Node* adt_node, int i0, int i1, int adt_treetype, Double_t adt_sx, Double_t adt_sv);
         //@}
     };
 
