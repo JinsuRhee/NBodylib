@@ -8,6 +8,25 @@
 
 namespace NBody
 {
+     void KDTree::FOFCriterion_CloseNodeFirst(Node *node, short *BucketFlag, Int_t *pGroup){
+
+	Int_t bs = node->GetStart();
+	Int_t be = node->GetEnd();
+	Int_t id;
+	for(Int_t i=bs;i<be;i++){
+		id = bucket[i].GetID();
+		if(pGroup[id]==0) break;
+
+		if(i==be-1){
+			BucketFlag[node->GetID()]=1;
+			return;
+		}
+	}
+
+	if(node->GetLeaf()>0) return;
+	FOFCriterion_CloseNodeFirst(((SplitNode*)node)->GetLeft(), BucketFlag, pGroup);
+	FOFCriterion_CloseNodeFirst(((SplitNode*)node)->GetRight(), BucketFlag, pGroup);
+     }
 
      void KDTree::FOF_Splay(Int_tree_t *Fifo, Int_t iid, Int_t nlink, Int_t iHead, Int_t iTail, Int_t old_pLen){
 
@@ -106,7 +125,6 @@ namespace NBody
                 if (period==NULL) root->FOFSearchBall(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,iid);
                 else root->FOFSearchBallPeriodic(0.0,fdist2,iGroup,numparts,bucket,pGroup,pLen,pHead,pTail,pNext,pBucketFlag, Fifo,iTail,off,period,iid);
 
-
 		//SPLAY for better FOF search (refer to Rhee+22)
 		if(iHead!=iTail){
 			Int_t nlink = pLen[iGroup] - old_pLen;
@@ -200,6 +218,9 @@ namespace NBody
         }
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
 
+	//Initial closing for fully-connected nodes
+	FOFCriterion_CloseNodeFirst(root, pBucketFlag, pGroup);
+
         for (Int_t i=0;i<numparts;i++){
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
@@ -208,7 +229,6 @@ namespace NBody
             pLen[iGroup]=1;
             pGroupHead[iGroup]=i;
             Fifo[iTail++]=i;
-
             //if reach the end of particle list, set iTail to zero and wrap around
             if(iTail==numparts) iTail=0;
             //continue search for this group until one has wrapped around such that iHead==iTail

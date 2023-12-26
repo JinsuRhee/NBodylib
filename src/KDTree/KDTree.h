@@ -460,6 +460,7 @@ namespace NBody
 
 	/// \name For Performance update version (Rhee+22)
 	void FOF_Splay(Int_tree_t *Fifo, Int_t iid, Int_t nlink, Int_t iHead, Int_t iTail, Int_t old_pLen);
+	void FOFCriterion_CloseNodeFirst(Node *node, short *BucketFlag, Int_t *pGroup);
 	//@}
 	
         /// \name Ordering routines
