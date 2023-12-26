@@ -527,7 +527,7 @@ namespace NBody
         //int flag=Head[bucket_start];
         int flag=1;
 
-        if(adt_farthest<0){ // old ver
+        if(adt_nodeskiptag<0){ // old ver
             Double_t maxr0=0.,maxr1=0.;
             for (int j=0;j<numdim;j++){
                 maxr0+=(bucket[target].GetPhase(j)-xbnd[j][0])*(bucket[target].GetPhase(j)-xbnd[j][0]);
@@ -579,7 +579,7 @@ namespace NBody
                 }
             }
         }
-        else{
+        else{ //Node skip by using trigonometric inequalities
             Double_t adt_pos[6], adt_dist, adt_rr;
 
             for(int i=0; i<numdim; i++) adt_pos[i] = bucket[target].GetPhase(i);
@@ -609,6 +609,7 @@ namespace NBody
             else{
                 Int_t id;
                 Double_t dist2;
+		flag = 0;
                 for (Int_t i = bucket_start; i < bucket_end; i++)
                 {
                     //if (flag!=Head[i])flag=0;
@@ -631,7 +632,7 @@ namespace NBody
                         Head[i]=Head[target];
 
                         if(iTail==nActive)iTail=0;
-                        flag=0;
+                        //flag=0;
                     }
                 }
             }
@@ -652,8 +653,7 @@ namespace NBody
         //int flag=Head[bucket_start];
         int flag = 1;
 
-
-        if(adt_farthest<0){ // old ver    
+        if(adt_nodeskiptag<0){ // old ver    
             for (Int_t i = bucket_start; i < bucket_end; i++)
             {
                 //if (flag!=Head[i])flag=0;
@@ -710,6 +710,7 @@ namespace NBody
                 }
             }
             else{
+		flag = 0;
                 for (Int_t i = bucket_start; i < bucket_end; i++)
                 {
                     //if (flag!=Head[i])flag=0;
@@ -721,7 +722,7 @@ namespace NBody
                     if (Group[id]<0) continue;
 
                     //if (flag!=Head[i])flag=0;
-                    //flag=0;
+                    flag=0;
 
                     if (cmp(bucket[target],bucket[i],params)) {
                         Group[id]=iGroup;
@@ -732,7 +733,6 @@ namespace NBody
                         Tail[Head[target]]=Tail[Head[i]];
                         Head[i]=Head[target];
                         if(iTail==nActive)iTail=0;
-                        flag=0;
                     }
                 }
         }

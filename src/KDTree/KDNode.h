@@ -56,10 +56,13 @@ namespace NBody
         UInt_tree_t bucket_end;
         unsigned short numdim;
 
-	/// (Rhee+22) Node closing + skipping
-	Node *parent, *sibling;
-	Int_t isleaf=-1;
-
+	    /// (Rhee+22) Node closing + skipping
+	    Node *parent, *sibling;
+	    Int_t isleaf=-1;
+        Double_t adt_center[6];
+        Double_t adt_farthest=-1.;
+	Int_t adt_nodeskiptag = -1;
+	
         public:
         virtual ~Node() {};
 
@@ -76,10 +79,13 @@ namespace NBody
         ///Get end index in particle array of particles enclosed by node
         virtual Int_t GetEnd(){return bucket_end;}
 
-	/// (Rhee+22) Node closing + skipping
-	Node *GetParent(){return parent;}
-	Node *GetSibling(){return sibling;}
-	virtual Int_t GetLeaf(){return isleaf;}
+	    /// (Rhee+22) Node closing + skipping
+	    Node *GetParent(){return parent;}
+	    Node *GetSibling(){return sibling;}
+	    virtual Int_t GetLeaf(){return isleaf;}
+        virtual Double_t GetFarthest(){return adt_farthest;}
+        virtual Double_t GetCenter(int i){return adt_center[i];}
+	virtual Int_t GetSkiptag(){return adt_nodeskiptag;}
         //@}
 
         /// \name Simple Set functions
@@ -87,10 +93,13 @@ namespace NBody
         /// set Id --- use with caution
         virtual void SetID(Int_tree_t id){nid=id;}
 
-	/// (Rhee+22) Node closing + skipping
-	virtual void SetParent(Node* node){parent=node;}
-	virtual void SetSibling(Node *node){sibling=node;}
-	virtual void SetLeaf(Int_t leaftmp){isleaf=leaftmp;}
+	    /// (Rhee+22) Node closing + skipping
+	    virtual void SetParent(Node* node){parent=node;}
+	    virtual void SetSibling(Node *node){sibling=node;}
+	    virtual void SetLeaf(Int_t leaftmp){isleaf=leaftmp;}
+        virtual void SetFarthest(Double_t fartmp){adt_farthest=fartmp;}
+        virtual void SetCenter(Double_t centertmp, int i){adt_center[i]=centertmp;}
+	virtual void SetSkiptag(){adt_nodeskiptag = 1;}
         //@}
 
         /// \name Find Nearest routines:

@@ -529,7 +529,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 
             double dx=0., dx2;
             int nn_bucket = (end - start) / 8; // only search between 1/8 to 7/8 to avoid a too much unbalanced tree
-            if(nn_bucket == 0) nn_bucket = 1;
+            //if(nn_bucket == 0) nn_bucket = 1;
             
             //Split node at the position of a particle with the maximum interparticle distance
             for(int ind=start + nn_bucket; ind<end - nn_bucket; ind++){
@@ -542,7 +542,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
     }
     inline void KDTree::setcord_adt(Node* adt_node, int i0, int i1, int ttype, Double_t adt_sx, Double_t adt_sv){
         Double_t adt_center[ND], adt_centertmp, adt_cenx[3], adt_cenv[3];
-        Double_t adt_pos[ND], adt_vel[ND];
+        Double_t adt_pos[3], adt_vel[3];
         Double_t adt_dd=-1., adt_dd2;
 
         for(int i=0; i<ND; i++){
@@ -551,7 +551,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             adt_center[i] = adt_centertmp / (Double_t (i1 - i0));
 
             if(ttype==2){
-                adt_cenx[i] = adt_center[i];
+                if(i<3) adt_cenx[i] = adt_center[i];
                 if(i>=3) adt_cenv[i-3] = adt_center[i];
             }
 
@@ -572,10 +572,12 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 
                 adt_dd2 = DistanceSqd(adt_pos, adt_cenx, 3) / (adt_sx*adt_sx);
                 if(ND==6) adt_dd2 += DistanceSqd(adt_vel, adt_cenv, 3) / (adt_sv*adt_sv);
+		if(adt_dd2>adt_dd) adt_dd = adt_dd2;
             }
         }
 
         adt_node->SetFarthest(adt_dd);
+	adt_node->SetSkiptag();
     }
     //-- End of inline functions
 
@@ -666,21 +668,18 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         Int_tree_t id = 0;
         int splitdim;
         Double_t splitvalue;
-        int ind0 = start;
-        int ind1 = end-1;
         int ompleafflag = -1;
         double max_dx;
         double sx = adt_sx;
         double sv = adt_sv;
 
-        
+	
         //if not building in parallel can set ids here and update number of nodes
         //otherwise, must set after construction
         if (ibuildinparallel == false) {
             id = numnodes;
             numnodes++;
         }
-
         // Node Construction for OMP decomposition
         //
         // check whether this node becomes a leaf with the following conditions
@@ -748,13 +747,13 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 if(adt_treetype==2){
                     sx = 1./sx;
                     sv = 1./sv;
-                    for(int i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
+                    for(Int_t i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
                 }
                 splitdim = DetermineSplitDim(start, end, bnd, otp);
                 if(adt_treetype==2){
                     sx = 1./sx;
                     sv = 1./sv;
-                    for(int i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
+                    for(Int_t i=start; i<end; i++) bucket[i].ScalePhase(sx, sv);
                 }
                 align_adt(start, end, splitdim, k, splitvalue, max_dx);
             }
@@ -786,14 +785,15 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             //  Define center by using the 'finding the smallest sphere' algorithm
             //  (https://en.wikipedia.org/wiki/Smallest-circle_problem)
 
-            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
             left->SetSibling(right);
             right->SetSibling(left);
-            left->SetParent(snode);
-            right->SetParent(snode);
 
             if(adt_nodeskip>0) setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
             if(adt_nodeskip>0) setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
+            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
+
+            left->SetParent(snode);
+            right->SetParent(snode);
             return snode;
 
 #endif
@@ -804,16 +804,16 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             left = BuildNodes_ADT(start, k+1, otp);
             right = BuildNodes_ADT(k+1, end, otp);
 
-            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
 
             left->SetSibling(right);
             right->SetSibling(left);
-            left->SetParent(snode);
-            right->SetParent(snode);
 
             if(adt_nodeskip>0) setcord_adt(left, start, k+1, adt_treetype, adt_sx, adt_sv);
             if(adt_nodeskip>0) setcord_adt(right, k+1, end, adt_treetype, adt_sx, adt_sv);
+            SplitNode *snode = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
 
+            left->SetParent(snode);
+            right->SetParent(snode);
             return snode;
            
         }       
@@ -1064,10 +1064,9 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         adt_rdist = dp_params[0];
         adt_sx = sqrt(dp_params[1]);
         adt_sv = sqrt(dp_params[2]);
-        adt_nmindom = ip_params[1];
         adt_treetype= ip_params[0];
-        adt_nodeskip= ip_params[1];
-
+        adt_nmindom = ip_params[1];
+        adt_nodeskip= ip_params[2];
         if (Period!=NULL)
         {
             period=new Double_t[3];
@@ -1084,6 +1083,12 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             if (splittingcriterion==1) for (int j=0;j<ND;j++) nientropy[j]=new Double_t[numparts];
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes_ADT(0,numparts, otp);
+	    if(adt_nodeskip>0){
+		root->SetSkiptag();
+		root->SetFarthest(1e31);
+		for(int adt_i=0; adt_i<ND; adt_i++) root->SetCenter(0., adt_i);
+	    }
+
             if (ibuildinparallel) BuildNodeIDs();
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];

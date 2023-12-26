@@ -867,7 +867,7 @@ namespace NBody
 	    if(BucketFlag[nid]) return;
 	    int flag=1;
 
-        if(adt_farthest<0){//oldver
+        if(adt_nodeskiptag<0){//oldver
             flag = 0;
             Double_t old_off = off[cut_dim];
             Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
@@ -949,7 +949,6 @@ namespace NBody
                         off[cut_dim] = old_off;
                     }
                 }
-                if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
             }
 
         }
@@ -972,48 +971,47 @@ namespace NBody
 
 	    int flag=1;
 
-	    if(adt_farthest<0){
-            flag = 0;
+	    if(adt_nodeskiptag<0){
+		    flag = 0;
 
-            Double_t old_off = off[cut_dim];
-            Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
-            //types of trees
-            const int TPHYS=0,TPROJ=1,TVEL=2,TPHS=3,TMETRIC=4;
-            double invscaling;
-            if ((int)params[0]==TPHYS) invscaling = 1.0/params[1];
-            else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
-            else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
-            else invscaling=1.0;
+		    Double_t old_off = off[cut_dim];
+		    Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;
+		    //types of trees
+		    const int TPHYS=0,TPROJ=1,TVEL=2,TPHS=3,TMETRIC=4;
+		    double invscaling;
+		    if ((int)params[0]==TPHYS) invscaling = 1.0/params[1];
+		    else if ((int)params[0]==TVEL) invscaling = 1.0/params[2];
+		    else if ((int)params[0]==TPHS) invscaling = 1.0/(params[(cut_dim<3)*1+(cut_dim>=3)*2]);
+		    else invscaling=1.0;
     
-    	    new_off *= sqrt(invscaling);
-    
-            if (new_off < 0)
-            {
-                left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                //rd += (-old_off*old_off + new_off*new_off)*invscaling;
-                rd += (-old_off*old_off + new_off*new_off);
-                if (rd < 1)
-                {
-                    off[cut_dim] = new_off;
-                    right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                    off[cut_dim] = old_off;
-                }
-            }
-            else
-            {
-                right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                //rd += (-old_off*old_off + new_off*new_off)*invscaling;
-                rd += (-old_off*old_off + new_off*new_off);
-                if (rd < 1)
-                {
-                    off[cut_dim] = new_off;
-                    left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
-                    off[cut_dim] = old_off;
-                }
-            }
+		    new_off *= sqrt(invscaling);
+	    
+		    if (new_off < 0)
+		    {
+			left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+			//rd += (-old_off*old_off + new_off*new_off)*invscaling;
+			rd += (-old_off*old_off + new_off*new_off);
+			if (rd < 1)
+			{
+			    off[cut_dim] = new_off;
+			    right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+			    off[cut_dim] = old_off;
+			}
+		    }
+		    else
+		    {
+			right->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+			//rd += (-old_off*old_off + new_off*new_off)*invscaling;
+			rd += (-old_off*old_off + new_off*new_off);
+			if (rd < 1)
+			{
+			    off[cut_dim] = new_off;
+			    left->FOFSearchCriterion(rd,cmp,params,iGroup,nActive,bucket,Group,Len,Head,Tail,Next,BucketFlag,Fifo,iTail,off,target);
+			    off[cut_dim] = old_off;
+			}
+		    }
         }
         else{
-
             Double_t adt_pos[3], adt_vel[3], adt_dist=0., adt_rr;
             Double_t adt_posCen[3], adt_velCen[3];
             for(int adt_j=0; adt_j<3; adt_j++) {adt_pos[adt_j] = bucket[target].GetPosition(adt_j); adt_posCen[adt_j] = adt_center[adt_j];}
