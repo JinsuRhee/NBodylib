@@ -459,10 +459,10 @@ namespace NBody
         if (inodeflagged == 1) {
             for (auto i = bucket_start; i < bucket_end; i++)
             {
-                Int_t id=bucket[i].GetID();
+                Int_t id = bucket[i].GetID();
                 Double_t dist2val = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition(), dim);
-                Group[id]=iGroup;
-                dist2[id]=dist2val;
+                Group[id] = iGroup;
+                dist2[id] = dist2val;
             }
             return;
         }
@@ -501,10 +501,10 @@ namespace NBody
         if (inodeflagged == 1) {
             for (auto i = bucket_start; i < bucket_end; i++)
             {
-                Int_t id=bucket[i].GetID();
+                Int_t id = bucket[i].GetID();
                 Double_t dist2val = DistanceSqd(x,bucket[i].GetPosition(), dim);
-                Group[id]=iGroup;
-                dist2[id]=dist2val;
+                Group[id] = iGroup;
+                dist2[id] = dist2val;
             }
             return;
         }
@@ -544,7 +544,7 @@ namespace NBody
         int inodeflagged = FlagNodeForSearchBallPos(fdist2, bucket[target]);
         if (inodeflagged == -1) return;
         if (inodeflagged == 1) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged[nt++]=i;
+            for (auto i = bucket_start; i < bucket_end; i++) if (i != target) tagged[nt++]=i;
             return;
         }
         Double_t old_off = off[cut_dim];
@@ -616,7 +616,10 @@ namespace NBody
         int inodeflagged = FlagNodeForSearchBallPos(fdist2, bucket[target]);
         if (inodeflagged == -1) return;
         if (inodeflagged == 1) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged.push_back(i);
+            UInt_t oldsize = tagged.size();
+            if (target >= bucket_start && target < bucket_end) tagged.resize(tagged.size() + count -1);
+            else tagged.resize(tagged.size() + count);
+            for (UInt_t i = bucket_start, j = oldsize; i < bucket_end; i++) if (i != target) tagged[j++] = i;
             return;
         }
         Double_t old_off = off[cut_dim];
@@ -650,7 +653,10 @@ namespace NBody
         int inodeflagged = FlagNodeForSearchBallPos(fdist2, x);
         if (inodeflagged == -1) return;
         if (inodeflagged == 1) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged.push_back(i);
+            // for (auto i = bucket_start; i < bucket_end; i++) tagged.push_back(i);
+            UInt_t oldsize = tagged.size();
+            tagged.resize(tagged.size() + count);
+            for (UInt_t i = bucket_start, j = oldsize; i < bucket_end; i++)tagged[j++] = i;
             return;
         }
         Double_t old_off = off[cut_dim];
@@ -925,15 +931,17 @@ namespace NBody
         //if bucket already linked and particle already part of group, do nothing.
         if(BucketFlag[nid]&&Head[target]==Head[bucket_start]) return;
         //now check if either search distance from particle fully encloses node
-        //or if farthest initialized, then that particle is within linking length
+        //or if farthest2 initialized, then that particle is within linking length
         //of center and all other particles in the node are within this linking length
         //from the center
         int inodeflagged = FlagNodeForFOFSearchBall(fdist2, bucket[target]);
         if (inodeflagged == -1) return;
+
         // if node entirely enclosed, link and flag
         if (inodeflagged == 1) {
             Int_t id;
-            for (auto i = bucket_start; i < bucket_end; i++){
+            for (auto i = bucket_start; i < bucket_end; i++)
+            {
                 id=bucket[i].GetID();
                 if (Group[id]) continue;
                 Group[id]=iGroup;
@@ -942,9 +950,10 @@ namespace NBody
 
                 Next[Tail[Head[target]]]=Head[i];
                 Tail[Head[target]]=Tail[Head[i]];
-                Head[i]=Head[target];
+                Head[i] = Head[target];
 
-                if(iTail==nActive)iTail=0;
+                //if(iTail == nActive) iTail=0;
+                iTail %= nActive;
             }
             BucketFlag[nid]=1;
             return;

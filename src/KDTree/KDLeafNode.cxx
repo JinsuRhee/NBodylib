@@ -320,12 +320,12 @@ namespace NBody
             maxr2 += maxdist*maxdist;
         }
         if (maxr2<fdist2) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged[nt++]=i;
+            for (auto i = bucket_start; i < bucket_end; i++) if (i != target) tagged[nt++]=i;
         }
         else {
             for (auto i = bucket_start; i < bucket_end; i++)
             {
-                if (i!=target){
+                if (i != target){
                 Double_t dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition(), dim);
                 if (dist2 < fdist2) tagged[nt++]=i;
                 }
@@ -361,13 +361,17 @@ namespace NBody
 
     void LeafNode::SearchBallPosTagged(Double_t rd, Double_t fdist2, Particle *bucket, vector<Int_t> &tagged, Double_t* off, UInt_tree_t target, int dim)
     {
+
         Double_t maxr2 = 0;
         for (int j=0;j<dim;j++){
             auto maxdist = std::max(std::abs(bucket[target].GetPosition(j)-xbnd[j][0]), std::abs(bucket[target].GetPosition(j)-xbnd[j][1]));
             maxr2 += maxdist*maxdist;
         }
         if (maxr2<fdist2) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged.push_back(i);
+            UInt_t oldsize = tagged.size();
+            if (target >= bucket_start && target < bucket_end) tagged.resize(tagged.size() + count -1);
+            else tagged.resize(tagged.size() + count);
+            for (UInt_t i = bucket_start, j = oldsize; i < bucket_end; i++) if (i != target) tagged[j++] = i;
         }
         else {
             for (auto i = bucket_start; i < bucket_end; i++)
@@ -388,7 +392,9 @@ namespace NBody
             maxr2 += maxdist*maxdist;
         }
         if (maxr2<fdist2) {
-            for (auto i = bucket_start; i < bucket_end; i++) tagged.push_back(i);
+            UInt_t oldsize = tagged.size();
+            tagged.resize(tagged.size() + count);
+            for (UInt_t i = bucket_start, j = oldsize; i < bucket_end; i++) tagged[j++] = i;
         }
         else {
             for (auto i = bucket_start; i < bucket_end; i++)
@@ -411,7 +417,6 @@ namespace NBody
         for (auto i = bucket_start; i < bucket_end; i++)
         {
             if (i!=target&&(Group[bucket[i].GetID()]>iGroup||Group[bucket[i].GetID()]==0)){
-//            if (i!=target&&Group[bucket[i].GetID()]!=iGroup){
             if (cmp(bucket[target],bucket[i],params))
             {
                 Double_t dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition(), dim);
@@ -522,12 +527,12 @@ namespace NBody
     void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, UInt_tree_t target)
     {
         //if bucket already linked and particle already part of group, do nothing.
-        if(BucketFlag[nid]&&Head[target]==Head[bucket_start]) return;
+        if(BucketFlag[nid]) return;
         //this flag is initialized to !=0 and if entire bucket searched and all particles already linked,
         //then BucketFlag[nid]=1
-        int flag=Head[bucket_start];
+        int flag=1;
         //now check if either search distance from particle fully encloses node
-        //or if farthest initialized, then that particle is within linking length
+        //or if farthest2 initialized, then that particle is within linking length
         //of center and all other particles in the node are within this linking length
         //from the center
         int inodeflagged = FlagNodeForFOFSearchBall(fdist2, bucket[target]);
@@ -546,10 +551,9 @@ namespace NBody
                 Fifo[iTail++]=i;
                 Len[iGroup]++;
 
-                Next[Tail[Head[target]]]=Head[i];
-                Tail[Head[target]]=Tail[Head[i]];
-                Head[i]=Head[target];
-
+                Next[Tail[Head[target]]] = Head[i];
+                Tail[Head[target]] = Tail[Head[i]];
+                Head[i] = Head[target];
                 if(iTail==nActive)iTail=0;
             }
             BucketFlag[nid]=1;
@@ -561,7 +565,6 @@ namespace NBody
             Double_t dist2;
             for (UInt_tree_t i = bucket_start; i < bucket_end; i++)
             {
-                if (flag!=Head[i]) flag=0;
                 id=bucket[i].GetID();
                 if (Group[id]) continue;
                 dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
@@ -577,8 +580,10 @@ namespace NBody
                     Head[i]=Head[target];
 
                     if(iTail==nActive)iTail=0;
-                    flag=0;
                 }
+                // found particle that is not already linked and cannot be linked so do not 
+                // set BucketFlag 
+                else flag=0;
             }
             if (flag) BucketFlag[nid]=1;
         }
