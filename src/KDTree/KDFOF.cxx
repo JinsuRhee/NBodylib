@@ -38,6 +38,7 @@ namespace NBody
 		for(Int_t i2=0; i2<nlink; i2++){
 			i3=iTail - i2 - 1;
 			if(i3<0) i3 += numparts;
+			for(int j=0; j<MAXND; j++) sp_pos2[j]=bucket[Fifo[i3]].GetPhase(j);
 			sp_dist = DistanceSqd(sp_pos, sp_pos2, MAXND);
 			if(sp_dist > sp_dist2){
 				sp_dist2 = sp_dist;
@@ -54,6 +55,13 @@ namespace NBody
 	Fifo_dum = Fifo[iTail2];
 	Fifo[iTail2]	= Fifo[iHead];
 	Fifo[iHead]	= Fifo_dum;
+	//Int_tree_t Fifo_dum;
+        //Int_tree_t iTail2;
+        //iTail2 = iTail-1;
+        //if(iTail2 == -1) iTail2=numparts-1;
+        //Fifo_dum = Fifo[iTail2];
+        //Fifo[iTail2] = Fifo[iHead];
+        //Fifo[iHead] = Fifo_dum;
     }
 
     Int_t* KDTree::FOF(Double_t fdist, Int_t &numgroup, Int_t minnum, int order,
@@ -143,6 +151,9 @@ namespace NBody
 
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
+
+
+		
         //free memory for arrays that are not needed
         delete[] Fifo;
         delete[] pBucketFlag;
@@ -265,6 +276,13 @@ namespace NBody
         //for all groups that were too small reset id to 0
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
+	// Test
+	int js_a = 0;
+	for (Int_t ii=0; ii<numnodes; ii++){
+		if(pBucketFlag[ii]>0) js_a ++;
+	}
+
+	double js_frac = ((double) js_a) / ( (double) numnodes);
         //free memory for arrays that are not needed
         delete[] Fifo;
         delete[] pBucketFlag;

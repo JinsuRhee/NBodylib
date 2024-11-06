@@ -672,7 +672,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         double max_dx;
         double sx = adt_sx;
         double sv = adt_sv;
-
+	if(sizeall <0) sizeall = end-start;
 	
         //if not building in parallel can set ids here and update number of nodes
         //otherwise, must set after construction
@@ -690,12 +690,13 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             if(size <= b){
 
                 ompleafflag = 1;
-                for(int dimvar=0; dimvar<ND; dimvar++){
-                    max_dx = 0.;
-                    align_adt(start, end, dimvar, k, splitvalue, max_dx);
-                    if(max_dx > 2.0*adt_rdist){ompleafflag=-1; splitdim=dimvar; break;}
-                }
-
+		if(size>adt_nmindom){
+			for(int dimvar=0; dimvar<ND; dimvar++){
+			    max_dx = 0.;
+			    align_adt(start, end, dimvar, k, splitvalue, max_dx);
+			    if(max_dx > 2.0*adt_rdist){ompleafflag=-1; splitdim=dimvar; break;}
+			}
+		}
                 if(ompleafflag>0){
                     if (ibuildinparallel == false) numleafnodes++;
                     for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
@@ -705,18 +706,18 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                     return lnode;
                 }
                 else{
-                    if(size>adt_nmindom){
-                        
+                    //if(size>adt_nmindom){
+                    //    
 
-                    }
-                    else{
+                    //}
+                    //else{
                         if (ibuildinparallel == false) numleafnodes++;
                         for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
                         LeafNode *lnode;
                         lnode = new LeafNode(id, start, end, bnd, ND);
                         lnode->SetLeaf(1);
                         return lnode;
-                    }
+                    //}
                 }
                 
             }
@@ -726,7 +727,30 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 splitdim = DetermineSplitDim(start, end, bnd, otp);
                 align_adt(start, end, splitdim, k, splitvalue, max_dx);
 
-            }
+		if(max_dx < 2.0*adt_rdist){
+			int splitdim0 = splitdim;
+			for(int j=0; j<ND; j++){
+				if(j==splitdim0) continue;
+				align_adt(start, end, j, k, splitvalue, max_dx);
+				splitdim=j;
+				if(max_dx > 2.0*adt_rdist) break;
+
+
+				if(j==ND-1){
+
+					// Can't find a value with enough inter-particle distance
+					// -> Make this leaf
+					
+                        		if (ibuildinparallel == false) numleafnodes++;
+                        		for (int j=0;j<ND;j++) (this->*bmfunc)(j, start, end, bnd[j], otp);
+                        		LeafNode *lnode;
+                        		lnode = new LeafNode(id, start, end, bnd, ND);
+                        		lnode->SetLeaf(1);
+                        		return lnode;
+				}
+			}
+	        }
+	     }
         }
         else{
         // Node Constructurion for search nodes
@@ -758,7 +782,6 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
                 align_adt(start, end, splitdim, k, splitvalue, max_dx);
             }
         }
-
 
         
         //Now Split the node
@@ -1084,6 +1107,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes_ADT(0,numparts, otp);
 	    if(adt_nodeskip>0){
+		SetRelation(root);
 		root->SetSkiptag();
 		root->SetFarthest(1e31);
 		for(int adt_i=0; adt_i<ND; adt_i++) root->SetCenter(0., adt_i);
@@ -1160,6 +1184,30 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         for (Int_t i=0;i<numparts;i++) bucket[i].SetID(i);
     }
     void KDTree::SetResetOrder(bool a) {iresetorder=a;}
+
+    void KDTree::SetRelation(Node *node){
+
+	if(node->GetLeaf()<0){
+		// Sibling
+		Node *left, *right;
+                left    = ((SplitNode *) node)->GetLeft();
+                right   = ((SplitNode *) node)->GetRight();
+                ((Node *)left)->SetSibling( right );
+                ((Node *)right)->SetSibling( left );
+
+		// Parent
+		left->SetParent(node);
+                right->SetParent(node);
+
+                SetRelation(left);
+                SetRelation(right);
+	}
+	else{
+		return;
+	}
+    }
+
+
 
     KDTreeOMPThreadPool KDTree::OMPInitThreadPool()
     {

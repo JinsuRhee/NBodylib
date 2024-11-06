@@ -517,6 +517,8 @@ namespace NBody
 
     void LeafNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
+
+
         //if bucket already linked and particle already part of group, do nothing.
         
 	//if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
@@ -609,7 +611,7 @@ namespace NBody
             else{
                 Int_t id;
                 Double_t dist2;
-		flag = 0;
+		//flag = 0;
                 for (Int_t i = bucket_start; i < bucket_end; i++)
                 {
                     //if (flag!=Head[i])flag=0;
@@ -619,7 +621,7 @@ namespace NBody
                     if (numdim==6) dist2+=DistanceSqd(bucket[target].GetVelocity(),bucket[i].GetVelocity());
 
                     //if (flag!=Head[i])flag=0;
-                    //flag=0;
+                    flag=0;
                     //if(Group[id]==0)flag=0;
 
                     if (dist2 < fdist2) {
@@ -640,6 +642,15 @@ namespace NBody
 
         if (flag){
 			BucketFlag[nid]=1; // close this node
+//cout<<"%!23123 not here?"<<" / "<<nid<<" / "<<nActive<<endl;
+//
+//                Double_t dist2;
+//for (Int_t i = bucket_start; i < bucket_end; i++){
+//                    dist2 = DistanceSqd(bucket[target].GetPosition(),bucket[i].GetPosition());
+//	cout<<"		"<<dist2<<" / "<<fdist2<<endl;
+//}
+//
+//exit(9);
 			if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;	// if two sibling are closed, close the parent
 		}
     }
@@ -710,7 +721,7 @@ namespace NBody
                 }
             }
             else{
-		flag = 0;
+		//flag = 0;
                 for (Int_t i = bucket_start; i < bucket_end; i++)
                 {
                     //if (flag!=Head[i])flag=0;
@@ -733,6 +744,7 @@ namespace NBody
                         Tail[Head[target]]=Tail[Head[i]];
                         Head[i]=Head[target];
                         if(iTail==nActive)iTail=0;
+			//flag = 0
                     }
                 }
         }

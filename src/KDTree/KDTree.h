@@ -108,6 +108,7 @@ namespace NBody
         Int_t adt_treetype=0; //(0 for omp // 1 for normal search // 2 for crit search)
         Double_t adt_sx, adt_sv;
         Int_t adt_nodeskip=-1;
+	Int_t sizeall=-1;
 
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
@@ -196,7 +197,7 @@ namespace NBody
         ///Creates tree from an NBody::Particle array
         KDTree(Particle *p, Int_t numparts,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
-            int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
+            int SplittingCriterion=2, int Aniso=0, int ScaleSpace=0,
             Double_t *Period=NULL, Double_t **metric=NULL,
             bool iBuildInParallel = true,
             bool iKeepInputOrder = false
@@ -205,7 +206,7 @@ namespace NBody
         ///Creates unbalanced adaptive tree from an NBody::Particle array (Rhee+22)
         KDTree(Double_t *dp_params, Int_t *ip_params, Particle *p, Int_t numparts,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
-            int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0,
+            int SplittingCriterion=2, int Aniso=0, int ScaleSpace=0,
             Double_t *Period=NULL, Double_t **metric=NULL,
             bool iBuildInParallel = true,
             bool iKeepInputOrder = false
@@ -213,7 +214,7 @@ namespace NBody
         ///Creates tree from NBody::System
         KDTree(System &s,
             Int_t bucket_size = 16, int TreeType=TPHYS, int KernType=KEPAN, int KernRes=1000,
-            int SplittingCriterion=0, int Aniso=0, int ScaleSpace=0, Double_t **metric=NULL,
+            int SplittingCriterion=2, int Aniso=0, int ScaleSpace=0, Double_t **metric=NULL,
             bool iBuildInParallel = true,
             bool iKeepInputOrder = false
         );
@@ -472,6 +473,8 @@ namespace NBody
         void OverWriteInputOrder();
         /// set whether tree resets particle array to input order on delete
         void SetResetOrder(bool);
+	/// SEt Node relation
+	void SetRelation(Node *node);
         //@}
 
         void WalkNodesFromRoot();
