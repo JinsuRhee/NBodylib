@@ -261,12 +261,12 @@ namespace NBody
         Double_t cut_val;
         Node *left;
         Node *right;
-	Node *parent;
-	Node *sibling;
+	//Node *parent;
+	//Node *sibling;
         public:
         SplitNode(Int_t id, int d, Double_t p, Int_t Count, Double_t bnd[6][2],
             Int_t new_bucket_start, Int_t new_bucket_end, unsigned short ndim,
-            Node *initial_left = NULL, Node *initial_right = NULL)
+            Node *initial_left = NULL, Node *initial_right = NULL, Node *initial_sibling = NULL, Node *initial_parent=NULL)
         {
             nid=id;
             cut_dim = d;
@@ -276,8 +276,8 @@ namespace NBody
             bucket_end = new_bucket_end;
             left = initial_left;
             right = initial_right;
-	    parent = NULL;
-	    sibling = NULL;
+	    //parent = initial_parent;
+	    //sibling = initial_sibling;
             numdim=ndim;
             for (int j=0;j<numdim;j++) {xbnd[j][0]=bnd[j][0];xbnd[j][1]=bnd[j][1];}
         }
@@ -294,15 +294,15 @@ namespace NBody
         ///get the child node to the right of the cut value
         Node *GetRight(){return right;}
 	//get the parent node
-	Node *GetParent(){return parent;}
+	//Node *GetParent(){return parent;}
 	//get the sibling
-	Node *GetSibling(){return sibling;}
+	//Node *GetSibling(){return sibling;}
         //@}
 
 	/// \name Simple Set functions
 	//@{
-	virtual void SetParent(Node* node){parent=node;}
-	virtual void SetSibling(Node *node){sibling=node;}
+	//virtual void SetParent(Node* node){parent=node;}
+	//virtual void SetSibling(Node *node){sibling=node; cout<<"add of "<<nid<<" - "<<sibling<<endl;}
 	//@}
 	
         //implementations of Find functions
@@ -412,16 +412,18 @@ namespace NBody
     class LeafNode : public Node
     {
         private:
+	//Node * parent;
+	//Node * sibling;
         public:
-        LeafNode(Int_t id, Int_t new_bucket_start, Int_t new_bucket_end, Double_t bnd[6][2], unsigned short ndim)
+        LeafNode(Int_t id, Int_t new_bucket_start, Int_t new_bucket_end, Double_t bnd[6][2], unsigned short ndim)//, Node * initial_parent=NULL, Node * initial_sibling=NULL;)
         {
             nid=id;
             bucket_start = new_bucket_start;
             bucket_end = new_bucket_end;
             count=bucket_end-bucket_start;
             numdim=ndim;
-	    parent=NULL;
-	    sibling=NULL;
+	    //parent=initial_parent;
+	    //sibling=initial_sibling;
             for (int j=0;j<numdim;j++) {xbnd[j][0]=bnd[j][0];xbnd[j][1]=bnd[j][1];}
         }
         ~LeafNode() { }
@@ -429,15 +431,15 @@ namespace NBody
         /// \name Simple Get functions
         //@{
 	//get the parent node
-	Node *GetParent(){return parent;}
+	//Node *GetParent(){return parent;}
 	//get the sibling
-	Node *GetSibling(){return sibling;}
+	//Node *GetSibling(){return sibling;}
         //@}
 
 	/// \name Simple Set functions
 	//@{
-	virtual void SetParent(Node* node){parent=node;}
-	virtual void SetSibling(Node *node){sibling=node;}
+	//virtual void SetParent(Node* node){parent=node;}
+	//virtual void SetSibling(Node *node){sibling=node;}
 	//@}
 	
         //implementations of Find functions

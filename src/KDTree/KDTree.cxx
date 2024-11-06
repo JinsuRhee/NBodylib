@@ -520,6 +520,65 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    if(js_j +1 < js_end) js_qsort(js_j + 1, js_end, js_dim);
     }
 
+    inline void KDTree::js_align_adt(int start, int end, int sdim, int nid, Int_t &sind, Double_t &splitvalue, double &max_dx){
+
+	//adt_intdist -> .h?
+	
+	//initial visit -> store the interparticle distance
+	if(end-start == sizeall){
+
+		adt_intdist = new Double_t* [end-start];
+		for(int i=start; i<end; i++){
+			adt_intdist[i] = new Double_t[ND];
+		}
+
+		for(int n=0; n<ND; n++){
+			js_qsort(start, end-1, n);
+			
+			for(Int_t i=start; i<end-1; i++){
+				adt_intdist[i][n] = bucket[i+1].GetPhase(n) - bucket[i].GetPhase(n);
+			}
+			adt_intdist[end-1][n] = 0;
+		}
+	}
+
+
+	//find maximum interparticle distance
+	sind = start;
+	splitvalue = bucket[start].GetPhase(sdim);
+	max_dx = adt_intdist[start][sdim];
+	for(Int_t i=start; i<end; i++){
+		if(adt_intdist[i][sdim] > max_dx){
+			max_dx = adt_intdist[i][sdim];
+			sind = i;
+			splitvalue = bucket[i].GetPhase(sdim);
+		}
+
+	}
+
+	adt_intdist[sind][sdim] = 0.;
+
+	//sort by splitvalue
+     	Int_t lp = start; 
+	Int_t rp = end-1;
+
+	while(lp <= rp){
+		while(bucket[lp].GetPhase(sdim) < splitvalue){
+			lp ++;
+		}
+
+		while(bucket[rp].GetPhase(sdim) > splitvalue){
+			rp --;
+		}
+
+		if(lp <= rp){
+			swap(bucket[lp], bucket[rp]);
+			lp ++;
+			rp --;
+		}
+	}
+    }
+
     //-- End of inline functions
 
     //-- Private functions used to build tree
@@ -597,7 +656,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    int js_ind0 = start;
 	    int js_ind1 = end-1;
 	    int js_ompskip=-1;
-
+	    if(sizeall <0) sizeall = end-start;
         
 	    //if not building in parallel can set ids here and update number of nodes
 	    //otherwise, must set after construction
@@ -645,15 +704,20 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    if (ikeepinputorder) irearrangeandbalance=false;
 
 		    splitdim = DetermineSplitDim(start, end, bnd, otp);
+
+		    
 		    js_qsort(js_ind0, js_ind1, splitdim);
 
 		    double js_dx=0., js_dx2;
 		    int js_nn = (end - start) / 8;
 
 		    for(int js_ind=start + js_nn; js_ind<end - js_nn; js_ind++){
-			    js_dx2 = abs(bucket[js_ind+1].GetPhase(splitdim) - bucket[js_ind].GetPhase(splitdim));
-			    if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(splitdim);}
+		            js_dx2 = abs(bucket[js_ind+1].GetPhase(splitdim) - bucket[js_ind].GetPhase(splitdim));
+		            if(js_dx2 > js_dx){js_dx=js_dx2; k=js_ind; splitvalue=bucket[k].GetPhase(splitdim);}
 		    }
+
+		    //double max_dx;
+		    //js_align_adt(start, end, splitdim, id, k, splitvalue, max_dx);
 	    }
 
 	    //Now Split the node
@@ -676,10 +740,11 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 
 
                     SplitNode *end_node = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
-                    left->SetSibling(right);
-                    right->SetSibling(left);
-                    left->SetParent(end_node);
-                    right->SetParent(end_node);
+                    //left->SetSibling(right);
+                    //right->SetSibling(left);
+
+                    //left->SetParent(end_node);
+                    //right->SetParent(end_node);
                     return end_node;
 
                     //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
@@ -693,14 +758,16 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    right = BuildNodes_OMP(k+1, end, otp);
 
                     SplitNode *end_node = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
-                    left->SetSibling(right);
-                    right->SetSibling(left);
-                    left->SetParent(end_node);
-                    right->SetParent(end_node);
+                    //left->SetSibling(right);
+                    //right->SetSibling(left);
+                    //left->SetParent(end_node);
+                    //right->SetParent(end_node);
                     return end_node;
                     //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND,
                     //    left, right);
-	    }	    
+	    }
+
+
     }
     
     ///--JS--
@@ -714,6 +781,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    Double_t splitvalue;
 	    int js_ind0 = start;
 	    int js_ind1 = end-1;
+	    if(sizeall <0) sizeall = end-start;
 
 	    //if not building in parallel can set ids here and update number of nodes
 	    //otherwise, must set after construction
@@ -774,6 +842,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    //k = start + (size - 1) / 2;
 		    //splitvalue = (this->*medianfunc)(splitdim, k, start, end, otp, irearrangeandbalance);
 	    }
+
 
 	    //Now Split the node
 	    //run the node construction in parallel
@@ -838,10 +907,10 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    right->SetFarthest(js_dd);
 
 		    SplitNode *end_node = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
-		    left->SetSibling(right);
-		    right->SetSibling(left);
-		    left->SetParent(end_node);
-		    right->SetParent(end_node);
+		    //left->SetSibling(right);
+		    //right->SetSibling(left);
+		    //left->SetParent(end_node);
+		    //right->SetParent(end_node);
 		    return end_node;
 		    //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
 
@@ -898,10 +967,10 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 		    right->SetFarthest(js_dd);
 
 		    SplitNode *end_node = new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
-		    left->SetSibling(right);
-		    right->SetSibling(left);
-		    left->SetParent(end_node);
-		    right->SetParent(end_node);
+		    //left->SetSibling(right);
+		    //right->SetSibling(left);
+		    //left->SetParent(end_node);
+		    //right->SetParent(end_node);
 		    return end_node;
 		    //return new SplitNode(id, splitdim, splitvalue, size, bnd, start, end, ND, left, right);
 	    }	    
@@ -919,7 +988,6 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    int js_ind0 = start;
 	    int js_ind1 = end-1;
 
-        
 	    //if not building in parallel can set ids here and update number of nodes
 	    //otherwise, must set after construction
 	    if (ibuildinparallel == false) {
@@ -1498,6 +1566,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes_OMP(0,numparts, otp);
             if (ibuildinparallel) BuildNodeIDs();
+	    SetRelation(root);
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
@@ -1561,6 +1630,7 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
 	    for(int js_i=0; js_i<ND; js_i++) root->SetCenter(0., js_i);
 
             if (ibuildinparallel) BuildNodeIDs();
+	    SetRelation(root);
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
@@ -1622,9 +1692,11 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
             KDTreeOMPThreadPool otp = OMPInitThreadPool();
             root=BuildNodes_CRIT(0,numparts, otp, param);
 	    root->SetFarthest(1e31);
+	    SetRelation(root);
 	    for(int js_i=0; js_i<ND; js_i++) root->SetCenter(0., js_i);
 
             if (ibuildinparallel) BuildNodeIDs();
+	    SetRelation(root);
             //else if (treetype==TMETRIC) root = BuildNodesDim(0, numparts,metric);
             if (splittingcriterion==1) for (int j=0;j<ND;j++) delete[] nientropy[j];
         }
@@ -1656,6 +1728,29 @@ reduction(+:disp) num_threads(nthreads) if (nthreads>1)
         for (Int_t i=0;i<numparts;i++) bucket[i].SetID(i);
     }
     void KDTree::SetResetOrder(bool a) {iresetorder=a;}
+
+    void KDTree::SetRelation(Node *node){
+
+	if(node->GetLeaf()<0){
+		// Sibling
+		Node *left, *right;
+		left 	= ((SplitNode *) node)->GetLeft();
+		right 	= ((SplitNode *) node)->GetRight();
+		((Node *)left)->SetSibling( right );
+		((Node *)right)->SetSibling( left );
+
+		// Parent
+		left->SetParent(node);
+		right->SetParent(node);
+
+		SetRelation(left);
+		SetRelation(right);
+	}
+	else{
+		return;
+	}
+    }
+
 
     KDTreeOMPThreadPool KDTree::OMPInitThreadPool()
     {

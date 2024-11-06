@@ -110,6 +110,8 @@ namespace NBody
 	Double_t js_rdist;
 	Int_t js_adt;
 
+	Double_t **adt_intdist;
+	Int_t sizeall=-1;
         ///for an arbitrary tree spanning some space one would have offsets in the dimensional space to use
         ///something like \code int startdim,enddim; \endcode \n
         ///but here more appropriate to specify the type of tree that dictates the dimension
@@ -484,6 +486,8 @@ namespace NBody
         void OverWriteInputOrder();
         /// set whether tree resets particle array to input order on delete
         void SetResetOrder(bool);
+	/// Set Node relation
+	void SetRelation(Node *node);
         //@}
 
         void WalkNodesFromRoot();
@@ -592,6 +596,7 @@ namespace NBody
 	
 	/// \name Qsort for building adaptive KDTree
 	inline void js_qsort(int js_start, int js_end, int js_dim);
+	inline void js_align_adt(int start, int end, int sdim, int nid, Int_t &sind, Double_t &splitvalue, double &max_dx);
     };
 
 }

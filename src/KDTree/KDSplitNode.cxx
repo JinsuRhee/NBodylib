@@ -864,6 +864,7 @@ namespace NBody
 
     void SplitNode::FOFSearchBall(Double_t rd, Double_t fdist2, Int_t iGroup, Int_t nActive, Particle *bucket, Int_t *Group, Int_tree_t *Len, Int_tree_t *Head, Int_tree_t *Tail, Int_tree_t *Next, short *BucketFlag, Int_tree_t *Fifo, Int_t &iTail, Double_t* off, Int_t target)
     {
+
 	//if(BucketFlag[nid]&&Head[target]==Head[bucket_start])return;
 	if(BucketFlag[nid])return;
 	//int flag=Head[bucket_start];
@@ -1037,7 +1038,11 @@ namespace NBody
 
 		    if(BucketFlag[left->GetID()]==1 && BucketFlag[right->GetID()]==1) BucketFlag[nid]=1;
 	    }
-	    if (flag) BucketFlag[nid]=1;
+	//    if (flag) BucketFlag[nid]=1;
+	if (flag){
+                BucketFlag[nid]=1;
+                if(BucketFlag[sibling->GetID()]==1)BucketFlag[parent->GetID()]=1;
+        }
 
         //Double_t old_off = off[cut_dim];
         //Double_t new_off = bucket[target].GetPhase(cut_dim) - cut_val;

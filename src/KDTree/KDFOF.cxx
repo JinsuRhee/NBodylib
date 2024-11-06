@@ -6,7 +6,6 @@
 
 #include <KDTree.h>
 #include <sys/time.h>
-//%123123123
 
 namespace NBody
 {
@@ -168,6 +167,7 @@ namespace NBody
         for (Int_t i=0;i<numparts;i++) if(pGroup[bucket[i].GetID()]==-1)pGroup[bucket[i].GetID()]=0;
 
         //free memory for arrays that are not needed
+        
         delete[] Fifo;
         delete[] pBucketFlag;
         if (iph) delete[] pHead;
@@ -241,11 +241,8 @@ namespace NBody
             pNext[i]=-1;
         }
         for (Int_t i=0;i<numnodes;i++) pBucketFlag[i]=0;
-
 	//Initially close node in which no bg particles are
-	//%123123123
 	//FOFCriterion_CloseNodeFirst(root, pBucketFlag, pGroup);
-
         for (Int_t i=0;i<numparts;i++){
             //if particle already member of group, ignore and go to next particle
             id=bucket[i].GetID();
@@ -277,6 +274,7 @@ namespace NBody
 			Fifo[iTail2] = Fifo[iHead];
 			Fifo[iHead] = Fifo_dum;
 		}
+
             }
             //make sure group big enough
             if(pLen[iGroup]<minnum){
